@@ -1,38 +1,106 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#163b32">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#faf9f4" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1d1d1a" media="(prefers-color-scheme: dark)">
   <title>Backtest Review Lab · Would you trust this backtest?</title>
-  <meta name="description" content="Review two short backtests. Inspect the evidence, make a call, and reproduce the result. Available in English and Korean.">
-  <meta property="og:title" content="Backtest Review Lab · Would you trust this backtest?">
-  <meta property="og:description" content="Two short quant review puzzles. One decision per case. English and 한국어.">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%23163b32'/%3E%3Cpath d='M9 28V19m9 9V10m9 18V15' stroke='%23e6cb7e' stroke-width='4'/%3E%3C/svg%3E">
+  <meta name="description" content="Read a backtest claim, inspect the trade record, and deliver a verdict. Reproduce the evidence in Python, Rust, Go, or Java.">
+  <meta property="og:title" content="Backtest Review Lab">
+  <meta property="og:description" content="Which backtest would you approve? Read the record, give a verdict, and pass the unsolved case to a colleague.">
+  <meta property="og:image" content="https://cynkai.github.io/backtest-review-lab/cards/cover.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Backtest Review Lab, a collection of short reviews of trading evidence">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%23a83620'/%3E%3Cpath d='M6 28h28M11 8v16m8-10v11m8-16v16' stroke='%23faf9f4' stroke-width='2'/%3E%3Cpath d='M11 12v6m8 0v4m8-9v5' stroke='%23faf9f4' stroke-width='5'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
-  <script defer src="cases.js"></script><script defer src="app.js"></script>
+  <script defer src="cases.js"></script>
+  <script defer src="exhibits.js"></script>
+  <script defer src="check-sources.js"></script>
+  <script defer src="app.js"></script>
 </head>
 <body>
-  <a href="#question" class="skip-link" id="skip">Skip to case</a>
-  <header class="masthead"><div class="mast-inner">
-    <a class="brand" href="?" id="home"><span class="brand-mark" aria-hidden="true">▥</span> Backtest Review Lab</a>
-    <nav class="language" aria-label="Language"><a id="english" lang="en">EN</a><a id="korean" lang="ko">한국어</a></nav>
-  </div></header>
-  <noscript>Enable JavaScript to open the two reviews. 두 문제를 풀려면 자바스크립트를 켜 주세요.</noscript>
-  <div class="shell layout">
-    <aside class="case-nav"><h2 class="case-index" id="index-title">Case index</h2><nav id="case-links" aria-labelledby="index-title"></nav></aside>
+  <a class="skip-link" id="skip" href="#question">Skip to case</a>
+  <header class="masthead">
+    <div class="mast-inner">
+      <a class="brand" id="home" href="?">
+        <svg class="brand-mark" aria-hidden="true" viewBox="0 0 34 34" fill="none" stroke="currentColor">
+          <rect width="34" height="34" fill="currentColor" stroke="none"/>
+          <g stroke="var(--paper)" stroke-linecap="square">
+            <path d="M5.5 25.5h23M9 7v15m8-11v11m8-15v15" stroke-width="1.5"/>
+            <path d="M9 10v6m8-2v4m8-8v5" stroke-width="3.5"/>
+          </g>
+        </svg>
+        <span>Backtest Review <i>Lab</i></span>
+      </a>
+      <nav class="language" aria-label="Language">
+        <a id="english" lang="en">EN</a><span aria-hidden="true">/</span><a id="korean" lang="ko">한국어</a>
+      </nav>
+    </div>
+  </header>
+  <noscript>Enable JavaScript to open the reviews. 문제를 풀려면 자바스크립트를 켜 주세요.</noscript>
+  <div class="shell">
+    <aside class="case-nav">
+      <h2 class="case-index" id="index-title">Case index</h2>
+      <nav id="case-links" aria-labelledby="index-title"></nav>
+    </aside>
     <main id="question" tabindex="-1">
-      <header class="case-head"><p class="kicker" id="kicker"></p><h1 id="title"></h1><p class="howto" id="instruction"></p></header>
-      <section aria-labelledby="claim-title"><div class="section-head"><h2 id="claim-title"></h2></div><blockquote class="claim" id="claim"></blockquote><div class="metrics" id="metrics"></div></section>
-      <details class="evidence" id="evidence"><summary id="evidence-title"></summary><div class="evidence-body"><p id="evidence-note"></p><table id="evidence-table"></table></div></details>
-      <section class="verdict" aria-labelledby="decision-title"><div class="section-head"><h2 id="decision-title"></h2></div><div class="choices" id="choices"></div></section>
-      <section class="result" id="result" aria-labelledby="result-title" hidden tabindex="-1">
-        <p class="result-tag" id="result-tag"></p><h2 id="result-title"></h2><p id="reason"></p>
-        <details id="python"><summary id="python-title"></summary><pre><code id="check"></code></pre></details>
-        <div class="next-step"><a class="action" id="next"></a><button class="action secondary" type="button" id="report"></button></div>
+      <header class="case-head">
+        <p class="kicker" id="kicker"></p>
+        <h1 id="title"></h1>
+        <p class="howto" id="instruction"></p>
+      </header>
+      <div class="spread">
+        <section class="claim-panel" aria-labelledby="claim-title">
+          <h2 class="section-label" id="claim-title"></h2>
+          <blockquote class="claim" id="claim"></blockquote>
+          <div class="metrics" id="metrics"></div>
+        </section>
+        <figure class="exhibit" id="exhibit"></figure>
+      </div>
+      <details class="evidence" id="evidence">
+        <summary id="evidence-title"></summary>
+        <div class="evidence-body"><p id="evidence-note"></p><table id="evidence-table"></table></div>
+      </details>
+      <section class="verdict" aria-labelledby="decision-title">
+        <h2 id="decision-title"></h2>
+        <div class="choices" id="choices"></div>
       </section>
-      <div class="share-area"><button class="action secondary" id="share" type="button"></button><span class="fine" id="copy-status" role="status"></span>
-        <textarea class="shared-url" id="copy-fallback" readonly hidden></textarea></div>
+      <section class="result" id="result" aria-labelledby="result-title" tabindex="-1" hidden>
+        <p class="result-tag" id="result-tag"></p>
+        <h2 id="result-title"></h2>
+        <p id="reason"></p>
+        <details id="python">
+          <summary id="python-title"></summary>
+          <div class="code-tools">
+            <label for="check-language" id="check-label"></label>
+            <select id="check-language">
+              <option value="python">Python</option>
+              <option value="rust">Rust</option>
+              <option value="go">Go</option>
+              <option value="java">Java</option>
+            </select>
+            <a id="check-source" class="source-link"></a>
+          </div>
+          <pre><code id="check"></code></pre>
+          <p class="run-line"><code id="check-command"></code></p>
+          <span id="code-status" role="status"></span>
+        </details>
+        <div class="next-step">
+          <a class="action" id="next"></a>
+          <button class="action secondary" type="button" id="report"></button>
+        </div>
+      </section>
+      <div class="share-area">
+        <button class="action secondary" id="share" type="button"></button>
+        <a class="action secondary" id="share-card" download></a>
+        <span class="fine" id="copy-status" role="status"></span>
+        <textarea class="shared-url" id="copy-fallback" readonly hidden></textarea>
+      </div>
     </main>
   </div>
   <footer class="footer"><span>Backtest Review Lab</span><nav><a id="feedback" href="https://github.com/cynkai/backtest-review-lab/issues/new?template=feedback.yml"></a><a id="source" href="https://github.com/cynkai/backtest-review-lab">GitHub</a></nav></footer>
-</body></html>
+</body>
+</html>

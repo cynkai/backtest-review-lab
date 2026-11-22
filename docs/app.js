@@ -2,27 +2,35 @@
 
 const labels = {
   en: {
-    index: "Case index", skip: "Skip to case", instruction: "Inspect the evidence and decide whether the author’s claim holds.",
+    index: "Case index", skip: "Skip to case", instruction: "Make your call, then check it in Python, Rust, Go or Java.",
     claim: "The author’s claim", evidence: "View evidence", choice: "Your verdict",
     approve: "Approve", revise: "Request changes", evidenceChoice: "Request more evidence",
-    matched: "Your verdict matches the evidence", different: "Compare your verdict with the evidence",
-    rationale: "Reviewer’s verdict", python: "Reproduce with Python", share: "Copy unsolved case link",
+    matched: "You and the reviewer agree", different: "The reviewer made a different call",
+    rationale: "Reviewer’s verdict", codeTitle: "Reproduce this review", codeLabel: "Language", download: "Download",
+    card: "Save question card (PNG)", share: "Copy case link",
     shared: "Unsolved link copied.", fallback: "Select and copy the text below.", report: "Copy my pilot result",
     reported: "Result copied. You can send it to the person who invited you.", feedback: "Give feedback on GitHub",
-    next: "Try the other case", time: "Seconds to first verdict", opened: "Evidence opened before verdict",
+    next: "Next case", revisit: "Back to case", time: "Seconds to first verdict", opened: "Source table opened before verdict",
     first: "First verdict", caseWord: "Case", yes: "Yes", no: "No", answerClip: "Pilot result", manual: "Text to copy"
   },
   ko: {
-    index: "문제 목록", skip: "문제로 건너뛰기", instruction: "근거를 살펴보고 작성자의 주장이 타당한지 판정해 보세요.",
+    index: "문제 목록", skip: "문제로 건너뛰기", instruction: "먼저 판정해 보세요. 풀이는 Python, Rust, Go, Java로 검산할 수 있습니다.",
     claim: "작성자의 주장", evidence: "근거 열기", choice: "나의 판정",
     approve: "승인", revise: "수정 요청", evidenceChoice: "추가 자료 요청",
-    matched: "근거에 맞는 판정입니다", different: "내 판정과 근거를 비교해 보세요",
-    rationale: "해설의 판정", python: "Python으로 재현하기", share: "정답 없는 문제 링크 복사",
+    matched: "검토자와 같은 판정을 내렸습니다", different: "검토자는 다르게 판단했습니다",
+    rationale: "검토 결과", codeTitle: "내 컴퓨터에서 검산하기", codeLabel: "코드 언어", download: "소스 받기",
+    card: "문제 카드 저장 (PNG)", share: "문제 링크 복사",
     shared: "정답 없는 링크를 복사했습니다.", fallback: "아래 텍스트를 선택해 복사해 주세요.", report: "내 파일럿 결과 복사",
     reported: "결과를 복사했습니다. 초대한 사람에게 직접 보낼 수 있습니다.", feedback: "GitHub에 의견 남기기",
-    next: "다른 문제 풀기", time: "첫 판정까지 걸린 초", opened: "판정 전 근거 열람",
+    next: "다음 문제", revisit: "다시 보기", time: "첫 판정까지 걸린 초", opened: "판정 전 원자료 열람",
     first: "첫 판정", caseWord: "문제", yes: "예", no: "아니오", answerClip: "파일럿 결과", manual: "복사할 텍스트"
   }
+};
+const programs = {
+  python: { file: "check.py", command: "python3 check.py" },
+  rust: { file: "check.rs", command: "rustc check.rs -o check && ./check" },
+  go: { file: "check.go", command: "go run check.go" },
+  java: { file: "Check.java", command: "java Check.java" }
 };
 const cases = window.PILOT_CASES;
 const sessions = new Map();
@@ -53,6 +61,15 @@ function routeLink(a, id, language) {
     if (changed) { $("question").focus({preventScroll: true}); window.scrollTo(0, 0); }
   };
 }
+function renderProgram() {
+  const language = $("check-language").value;
+  const program = programs[language];
+  $("check").textContent = window.CHECK_SOURCES[item.id][language];
+  $("check-command").textContent = program.command;
+  $("check-source").href = "checks/" + item.id + "/" + program.file;
+  $("check-source").download = program.file;
+  $("check-source").textContent = ui.download + " · " + program.file;
+}
 function renderResult() {
   const answer = current.answer;
   $("result").hidden = !answer;
@@ -60,10 +77,14 @@ function renderResult() {
   $("result-tag").textContent = answer === item.correct ? ui.matched : ui.different;
   $("result-title").textContent = ui.rationale + " · " + choiceText(item.correct);
   $("reason").textContent = item.reason[lang];
-  $("python-title").textContent = ui.python;
-  $("check").textContent = item.check;
-  const other = cases.find(c => c.id !== item.id);
-  $("next").textContent = ui.next + " · " + other.title[lang];
+  $("python-title").textContent = ui.codeTitle;
+  $("check-label").textContent = ui.codeLabel;
+  renderProgram();
+  const index = cases.indexOf(item);
+  const later = [...cases.slice(index + 1), ...cases.slice(0, index)];
+  const unsolved = later.find(c => !sessions.get(c.id)?.answer);
+  const other = unsolved || later[0];
+  $("next").textContent = (unsolved ? ui.next : ui.revisit) + " · " + other.title[lang];
   routeLink($("next"), other.id, lang);
   $("report").textContent = ui.report;
 }
@@ -103,12 +124,13 @@ function render() {
     routeLink(a, c.id, lang); return a;
   }));
   const number = cases.indexOf(item) + 1;
-  $("kicker").textContent = ui.caseWord + " 0" + number + " / 02  ·  " + item.category[lang];
+  $("kicker").textContent = ui.caseWord + " " + String(number).padStart(2, "0") + "  /  " + item.category[lang];
   $("title").textContent = item.title[lang]; $("instruction").textContent = ui.instruction;
   $("claim-title").textContent = ui.claim; $("claim").textContent = item.claim[lang];
   $("metrics").replaceChildren(...item.summary[lang].map(([label,value]) => {
     const m = elm("div", "", "metric"); m.append(elm("span", label, "metric-label"), elm("strong", value, "metric-value")); return m;
   }));
+  window.renderExhibit($("exhibit"), item.id, lang);
   $("evidence-title").textContent = ui.evidence + " · " + item.evidenceTitle[lang];
   $("evidence-note").textContent = item.evidenceNote[lang];
   const table = $("evidence-table"); table.replaceChildren();
@@ -118,6 +140,9 @@ function render() {
   for (const row of item.rows[lang]) { const tr = body.insertRow(); for (const text of row) tr.insertCell().textContent = text; }
   $("evidence").open = current.expanded; $("python").open = false;
   $("decision-title").textContent = ui.choice; renderChoices(); renderResult();
+  $("share-card").textContent = ui.card;
+  $("share-card").href = "cards/" + item.id + "-" + lang + ".png";
+  $("share-card").download = "backtest-" + item.id + "-" + lang + ".png";
   $("share").textContent = ui.share; $("copy-status").textContent = ""; $("copy-fallback").hidden = true;
   $("copy-fallback").setAttribute("aria-label", ui.manual); $("feedback").textContent = ui.feedback;
   $("source").textContent = lang === "ko" ? "GitHub에서 스타 남기기" : "Star on GitHub";
@@ -136,9 +161,10 @@ $("evidence").addEventListener("toggle", () => {
   current.expanded = $("evidence").open;
   if (current.expanded && !current.answer) current.sawEvidence = true;
 });
+$("check-language").onchange = renderProgram;
 $("share").onclick = () => copy(urlFor(item.id, lang, true), ui.shared);
 $("report").onclick = () => {
-  const lines = [ui.answerClip + " · " + item.id, ui.first + ": " + choiceText(current.answer), ui.time + ": " + current.seconds,
+  const lines = [ui.answerClip + " · v2 · " + item.id, ui.first + ": " + choiceText(current.answer), ui.time + ": " + current.seconds,
     ui.opened + ": " + (current.sawEvidence ? ui.yes : ui.no)];
   copy(lines.join("\n"), ui.reported);
 };

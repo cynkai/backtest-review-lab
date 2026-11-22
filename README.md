@@ -1,32 +1,51 @@
 # Backtest Review Lab
 
-Would you trust this backtest? Read the author's claim, inspect the evidence, then **approve**, **request changes**, or **ask for more evidence**. Two short reviews, in English and Korean. Each comes with a runnable Python check and synthetic data.
+An entry filter takes a strategy’s win rate from 60.0% to 66.7%. The author says it made more money. Would you approve the change?
 
-**[Try the first case](https://cynkai.github.io/backtest-review-lab/?case=filter&lang=en)** · **[한국어로 시작하기](https://cynkai.github.io/backtest-review-lab/?case=filter&lang=ko)**
+[Open the five-trade ledger](https://cynkai.github.io/backtest-review-lab/?case=filter&lang=en) · [한국어로 풀기](https://cynkai.github.io/backtest-review-lab/?case=filter&lang=ko)
 
-| Review | Evidence |
+[![Backtest Review Lab question card. The win rate went up. Did the profit?](docs/cards/filter-en.png)](https://cynkai.github.io/backtest-review-lab/?case=filter&lang=en)
+
+## The case files
+
+| Case | What you get to inspect |
 | --- | --- |
-| [The higher win rate](https://cynkai.github.io/backtest-review-lab/?case=filter&lang=en) | Five trades before and after a change to the entry filter |
-| [Two orders, one candle](https://cynkai.github.io/backtest-review-lab/?case=candle&lang=en) | An open position, two exit orders, and a five-minute bar |
+| [The higher win rate](https://cynkai.github.io/backtest-review-lab/?case=filter&lang=en) | Five trades, including the two the filter skipped |
+| [Two orders, one candle](https://cynkai.github.io/backtest-review-lab/?case=candle&lang=en) | A five-minute bar, a stop order and a take-profit order |
+| [The round-trip receipt](https://cynkai.github.io/backtest-review-lab/?case=fees&lang=en) | Two fills and the commission on each |
 
-## Try it with a colleague
+Each case uses synthetic records. Inspect the evidence and choose **approve**, **request changes**, or **request more evidence**. The review opens after your first call. A downloadable question card includes a QR code that opens the unsolved case in the same language.
 
-Send the **unsolved case link** and let them make the first call. The answer and timeline stay in the current tab while it is open. Reloading starts a fresh review. The optional result-copy button puts the first verdict, elapsed seconds, and whether the evidence was opened on the clipboard. The puzzle sends no participant results to the project.
+## Reproduce a verdict
 
-If you would use this in a study group or code review, [tell us how it went](https://github.com/cynkai/backtest-review-lab/issues/new?template=feedback.yml). GitHub issues are public. A star helps you find the cases again.
+Open the code panel after a verdict. Choose a language and download its source file. Each file runs independently with the standard library. From the directory containing the downloaded file, use the command for your language.
 
-## Run locally
+| Language | Example | Run |
+| --- | --- | --- |
+| Python 3 | [check.py](docs/checks/filter/check.py) | `python3 check.py` |
+| Rust | [check.rs](docs/checks/filter/check.rs) | `rustc check.rs -o check && ./check` |
+| Go 1.21+ | [check.go](docs/checks/filter/check.go) | `go run check.go` |
+| Java 17+ | [Check.java](docs/checks/filter/Check.java) | `java Check.java` |
 
-Open `docs/index.html` directly, or run `python3 -m http.server 8000 --directory docs` and open `http://localhost:8000`. The site uses HTML, CSS and vanilla JavaScript. There are no runtime dependencies or account requirements.
+To run the entire set, clone the repository and run `node tests/check-cases.mjs all` with the four toolchains on your PATH. To run one language, replace `all` with `python`, `rust`, `go`, or `java`. The checks compare each program’s output with the evidence shown in the browser.
 
-To verify the two reproducible answer keys with Node.js and Python 3, run:
+## Use it in a study group
 
-```sh
-node tests/check-cases.mjs
-```
+Send a fresh case link or show the question card before discussing the verdict. To try it offline, open `docs/index.html` in a browser. The site keeps first decisions in memory for the current page session. Participants can copy their own pilot record if they want to send it to a facilitator. The site sends no verdicts or timing data to the project.
+
+If a case sparked a disagreement, or a real review gave you an idea for another one, [leave a note](https://github.com/cynkai/backtest-review-lab/issues/new?template=feedback.yml). GitHub issues are public.
 
 ## 한국어
 
-[첫 문제](https://cynkai.github.io/backtest-review-lab/?case=filter&lang=ko)와 [두 번째 문제](https://cynkai.github.io/backtest-review-lab/?case=candle&lang=ko)는 브라우저에서 바로 풀 수 있습니다. 근거를 열고 판정하면 해설과 검증 코드가 나옵니다. 동료에게 보낼 때는 **정답 없는 문제 링크 복사**를 쓰세요. 파일럿 결과는 본인이 복사해 전달할 때만 상대에게 공유됩니다. 사용 소감이나 다음 사례 제안은 [GitHub 이슈](https://github.com/cynkai/backtest-review-lab/issues/new?template=feedback.yml)에 남길 수 있습니다. 이슈의 계정명과 글은 공개됩니다.
+[거래 원장](https://cynkai.github.io/backtest-review-lab/?case=filter&lang=ko), [5분봉과 두 주문](https://cynkai.github.io/backtest-review-lab/?case=candle&lang=ko), [체결 명세서](https://cynkai.github.io/backtest-review-lab/?case=fees&lang=ko) 중 하나를 고르세요. 판정 뒤에 Python·Rust·Go·Java 풀이를 골라 내려받을 수 있습니다. 스터디에서는 화면 아래의 **문제 카드 저장 (PNG)** 으로 정답이 가려진 카드를 공유하세요.
+
+<details>
+<summary>Maintaining the static site</summary>
+
+After editing files in `docs/checks/`, run `node scripts/bundle-checks.mjs` to refresh the offline source previews. CI verifies that they match the downloadable files.
+
+The share cards are ready-to-use PNGs under `docs/cards/`. To regenerate them, install Pillow and segno in a development environment. Run `python3 scripts/make-cards.py --serif PATH --sans PATH --korean PATH` with local font files. For the last argument use a font with Hangul glyphs.
+
+</details>
 
 [MIT License](LICENSE)
