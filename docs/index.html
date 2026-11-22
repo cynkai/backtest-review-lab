@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#163b32">
+  <title>Backtest Review Lab · Would you trust this backtest?</title>
+  <meta name="description" content="Review two short backtests. Inspect the evidence, make a call, and reproduce the result. Available in English and Korean.">
+  <meta property="og:title" content="Backtest Review Lab · Would you trust this backtest?">
+  <meta property="og:description" content="Two short quant review puzzles. One decision per case. English and 한국어.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%23163b32'/%3E%3Cpath d='M9 28V19m9 9V10m9 18V15' stroke='%23e6cb7e' stroke-width='4'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="cases.js"></script><script defer src="app.js"></script>
+</head>
+<body>
+  <a href="#question" class="skip-link" id="skip">Skip to case</a>
+  <header class="masthead"><div class="mast-inner">
+    <a class="brand" href="?" id="home"><span class="brand-mark" aria-hidden="true">▥</span> Backtest Review Lab</a>
+    <nav class="language" aria-label="Language"><a id="english" lang="en">EN</a><a id="korean" lang="ko">한국어</a></nav>
+  </div></header>
+  <noscript>Enable JavaScript to open the two reviews. 두 문제를 풀려면 자바스크립트를 켜 주세요.</noscript>
+  <div class="shell layout">
+    <aside class="case-nav"><h2 class="case-index" id="index-title">Case index</h2><nav id="case-links" aria-labelledby="index-title"></nav></aside>
+    <main id="question" tabindex="-1">
+      <header class="case-head"><p class="kicker" id="kicker"></p><h1 id="title"></h1><p class="howto" id="instruction"></p></header>
+      <section aria-labelledby="claim-title"><div class="section-head"><h2 id="claim-title"></h2></div><blockquote class="claim" id="claim"></blockquote><div class="metrics" id="metrics"></div></section>
+      <details class="evidence" id="evidence"><summary id="evidence-title"></summary><div class="evidence-body"><p id="evidence-note"></p><table id="evidence-table"></table></div></details>
+      <section class="verdict" aria-labelledby="decision-title"><div class="section-head"><h2 id="decision-title"></h2></div><div class="choices" id="choices"></div></section>
+      <section class="result" id="result" aria-labelledby="result-title" hidden tabindex="-1">
+        <p class="result-tag" id="result-tag"></p><h2 id="result-title"></h2><p id="reason"></p>
+        <details id="python"><summary id="python-title"></summary><pre><code id="check"></code></pre></details>
+        <div class="next-step"><a class="action" id="next"></a><button class="action secondary" type="button" id="report"></button></div>
+      </section>
+      <div class="share-area"><button class="action secondary" id="share" type="button"></button><span class="fine" id="copy-status" role="status"></span>
+        <textarea class="shared-url" id="copy-fallback" readonly hidden></textarea></div>
+    </main>
+  </div>
+  <footer class="footer"><span>Backtest Review Lab</span><nav><a id="feedback" href="https://github.com/cynkai/backtest-review-lab/issues/new?template=feedback.yml"></a><a id="source" href="https://github.com/cynkai/backtest-review-lab">GitHub</a></nav></footer>
+</body></html>

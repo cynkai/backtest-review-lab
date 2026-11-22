@@ -1,0 +1,25 @@
+name: Pilot feedback · 파일럿 의견
+description: Tell us about a review, a study-group session, or a case idea.
+title: "[Pilot] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: "This issue is public. Share only what you are comfortable publishing. 이 글과 GitHub 계정명은 공개됩니다. 개인 연락처와 실제 거래 내역은 생략해 주세요."
+  - type: dropdown
+    id: experience
+    attributes:
+      label: What did you do? · 어떤 경험을 하셨나요?
+      options:
+        - Tried a case · 문제를 풀었음
+        - Sent a case to someone · 동료에게 실제로 전달함
+        - Used a case in a study group · 스터디에서 사용함
+        - Have an idea or correction · 사례 제안 또는 정정
+    validations:
+      required: true
+  - type: textarea
+    id: feedback
+    attributes:
+      label: What would you keep or change? · 어떤 점을 유지하거나 바꾸면 좋을까요?
+    validations:
+      required: true
