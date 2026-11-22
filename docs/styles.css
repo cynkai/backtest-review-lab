@@ -116,7 +116,7 @@ a { color: inherit; text-underline-offset: .22em; }
     linear-gradient(currentColor, currentColor) center bottom / 19% 100% no-repeat,
     linear-gradient(currentColor, currentColor) right bottom / 19% 70% no-repeat;
 }
-.language { display: inline-flex; align-items: center; gap: .2rem; }
+.language { display: inline-flex; flex: none; align-items: center; gap: .2rem; white-space: nowrap; }
 .language,
 .language button,
 .language a,
