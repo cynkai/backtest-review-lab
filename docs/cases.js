@@ -18,9 +18,17 @@
   const target = 105;
   const candleRow = [candle.open, candle.high, candle.low, candle.close].map(String);
 
+  const receipt = { quantity: 1, buyCents: 10000, sellCents: 10800, buyFeeCents: 125, sellFeeCents: 175 };
+  const dollars = cents => (cents / 100).toFixed(2);
+  const receiptRows = (buy, sell) => [
+    [buy, String(receipt.quantity), dollars(receipt.buyCents), dollars(receipt.buyFeeCents)],
+    [sell, String(receipt.quantity), dollars(receipt.sellCents), dollars(receipt.sellFeeCents)]
+  ];
+
   window.PILOT_CASES = [
     {
       id: "filter",
+      data: { trades: ledger },
       correct: "revise",
       title: { ko: "승률이 오른 필터", en: "The higher win rate" },
       category: { ko: "거래 원장", en: "Trade ledger" },
@@ -45,19 +53,11 @@
       reason: {
         ko: "승률은 3승 5전에서 2승 3전으로 올랐습니다. 하지만 필터가 3달러 손실을 피하면서 20달러 이익도 놓쳤습니다. 순손익은 22달러에서 5달러로 줄었으므로 이 기간의 순손익이 개선됐다는 문장을 고쳐야 합니다.",
         en: "The win rate did rise, from 3 wins in 5 trades to 2 in 3. But the filter avoided a $3 loss and gave up a $20 gain. Net profit fell from $22 to $5, so the claim about this period’s net profit needs a correction."
-      },
-      check: [
-        "original = {" + ledger.map(trade => '"' + trade.id + '": ' + trade.net).join(", ") + "}",
-        "kept = [" + kept.map(trade => '"' + trade.id + '"').join(", ") + "]",
-        "filtered = [original[key] for key in kept]",
-        "assert sum(x > 0 for x in original.values()) == 3",
-        "assert sum(x > 0 for x in filtered) == 2",
-        "assert (sum(original.values()), sum(filtered)) == (22, 5)",
-        'print("Change in net profit:", sum(filtered) - sum(original.values()))'
-      ].join("\n")
+      }
     },
     {
       id: "candle",
+      data: { bar: candle, entry, stop, target },
       correct: "evidence",
       title: { ko: "한 봉 안의 두 주문", en: "Two orders, one candle" },
       category: { ko: "체결 순서", en: "Order execution" },
@@ -82,20 +82,39 @@
       reason: {
         ko: "100 → 108 → 92 → 103이면 105달러 익절이 먼저입니다. 100 → 92 → 108 → 103이면 95달러 손절이 먼저입니다. 두 경로는 같은 5분봉을 만듭니다. 실제 순서를 판정하려면 두 가격에 처음 닿은 시각을 구분할 수 있는 기록이 필요합니다.",
         en: "On the path 100 → 108 → 92 → 103, the $105 target fills first. On 100 → 92 → 108 → 103, the $95 stop fills first. Both paths produce this bar. Ask for a time-ordered record detailed enough to identify the first touch."
+      }
+    },
+    {
+      id: "fees",
+      data: receipt,
+      correct: "approve",
+      title: { ko: "두 장의 체결 명세서", en: "The round-trip receipt" },
+      category: { ko: "거래 비용", en: "Trading costs" },
+      claim: {
+        ko: "“한 주를 100달러에 사서 108달러에 팔았습니다. 매수·매도 수수료를 모두 내고 남은 돈은 5달러입니다.”",
+        en: "“We bought one share at $100 and sold it at $108. After both commissions, we made $5 on the round trip.”"
       },
-      check: [
-        "high_first = [" + [candle.open, candle.high, candle.low, candle.close].join(", ") + "]",
-        "low_first = [" + [candle.open, candle.low, candle.high, candle.close].join(", ") + "]",
-        "def ohlc(path):",
-        "    return path[0], max(path), min(path), path[-1]",
-        "def first_exit(path):",
-        "    for price in path:",
-        '        if price >= ' + target + ': return "target"',
-        '        if price <= ' + stop + ': return "stop"',
-        "assert ohlc(high_first) == ohlc(low_first)",
-        'assert (first_exit(high_first), first_exit(low_first)) == ("target", "stop")',
-        "print(first_exit(high_first), first_exit(low_first))"
-      ].join("\n")
+      summary: {
+        ko: [["거래 수량", receipt.quantity + "주"], ["매매 차익", "$" + dollars(receipt.quantity * (receipt.sellCents - receipt.buyCents))]],
+        en: [["Position size", receipt.quantity + " share"], ["Gross profit", "$" + dollars(receipt.quantity * (receipt.sellCents - receipt.buyCents))]]
+      },
+      evidenceTitle: { ko: "매수·매도 체결 내역", en: "Buy and sell confirmations" },
+      evidenceNote: {
+        ko: "매수와 매도가 모두 표시된 가격에 체결됐습니다. 수수료는 주문당 한 번씩 별도 청구됐고, 이 거래에 발생한 비용은 두 건이 전부입니다.",
+        en: "Both orders filled at the prices shown. The broker charged one commission per order, billed separately. These were the only costs on this trade."
+      },
+      columns: {
+        ko: ["주문", "수량", "체결가 ($)", "수수료 ($)"],
+        en: ["Side", "Shares", "Fill ($)", "Fee ($)"]
+      },
+      rows: {
+        ko: receiptRows("매수", "매도"),
+        en: receiptRows("Buy", "Sell")
+      },
+      reason: {
+        ko: "매수 때 101.25달러가 나갔고 매도 때 106.25달러가 들어왔습니다. 두 현금 흐름의 차이는 정확히 5달러입니다. 여기서 수수료를 또 빼면 같은 비용을 두 번 계산합니다.",
+        en: "The buy took $101.25 out of the account. The sale put $106.25 back in. The difference is exactly $5. Subtracting commissions again would charge the same two fees twice."
+      }
     }
   ];
 })();
