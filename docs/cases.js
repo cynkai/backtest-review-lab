@@ -24,6 +24,13 @@
     [buy, String(receipt.quantity), dollars(receipt.buyCents), dollars(receipt.buyFeeCents)],
     [sell, String(receipt.quantity), dollars(receipt.sellCents), dollars(receipt.sellFeeCents)]
   ];
+  const closingSignal = {
+    previousClose: 100,
+    close: 104,
+    thresholdPercent: 3,
+    orderCutoff: "15:55",
+    closeAvailable: "16:00"
+  };
 
   window.PILOT_CASES = [
     {
@@ -114,6 +121,43 @@
       reason: {
         ko: "매수 때 101.25달러가 나갔고 매도 때 106.25달러가 들어왔습니다. 두 현금 흐름의 차이는 정확히 5달러입니다. 여기서 수수료를 또 빼면 같은 비용을 두 번 계산합니다.",
         en: "The buy took $101.25 out of the account. The sale put $106.25 back in. The difference is exactly $5. Subtracting commissions again would charge the same two fees twice."
+      }
+    },
+    {
+      id: "lookahead",
+      data: closingSignal,
+      correct: "revise",
+      title: { ko: "종가로 낸 매수 신호", en: "The closing-price signal" },
+      category: { ko: "데이터 시점", en: "Data timing" },
+      claim: {
+        ko: `“공식 종가가 직전 거래일보다 ${closingSignal.thresholdPercent}% 이상 오르면 매수합니다. 이 신호로 당일 종가 ${closingSignal.close}달러에 체결됐습니다.”`,
+        en: `“We buy when the official close is at least ${closingSignal.thresholdPercent}% above the prior close. That signal got us filled at the same day’s close of $${closingSignal.close}.”`
+      },
+      summary: {
+        ko: [["매수 기준", "+" + closingSignal.thresholdPercent + "% 이상"], ["기록된 체결가", "$" + closingSignal.close]],
+        en: [["Buy threshold", "+" + closingSignal.thresholdPercent + "% or more"], ["Reported fill", "$" + closingSignal.close]]
+      },
+      evidenceTitle: { ko: "종가 공표 및 주문 마감 기록", en: "Close publication and order cutoff" },
+      evidenceNote: {
+        ko: "이 가상 거래소에서 공식 종가로 체결하려면 접수 마감 시각까지 종가 체결 주문(MOC)을 제출해야 합니다. 매수 규칙은 공표된 공식 종가를 사용합니다. 모든 시각은 거래소 현지 시각입니다.",
+        en: "In this simulated venue, filling at the official close requires a market-on-close order submitted by the cutoff. The buy rule uses the published official close. All times are exchange-local."
+      },
+      columns: { ko: ["시각", "이벤트", "가격 ($)"], en: ["Time", "Event", "Price ($)"] },
+      rows: {
+        ko: [
+          ["직전 거래일", "직전 종가 공표", String(closingSignal.previousClose)],
+          [closingSignal.orderCutoff, "종가 체결 주문 접수 마감", "—"],
+          [closingSignal.closeAvailable, "당일 공식 종가 공표", String(closingSignal.close)]
+        ],
+        en: [
+          ["Prior session", "Prior close published", String(closingSignal.previousClose)],
+          [closingSignal.orderCutoff, "Market-on-close order cutoff", "—"],
+          [closingSignal.closeAvailable, "Official close published", String(closingSignal.close)]
+        ]
+      },
+      reason: {
+        ko: "종가는 100달러에서 104달러로 4% 올라 매수 기준을 충족합니다. 신호를 계산할 수 있는 16:00에는 주문 접수가 이미 5분 전에 끝났습니다. 백테스트가 주문 시점에 알 수 없던 가격을 쓴 미래 정보 편향(look-ahead bias)입니다. 신호가 나온 뒤 실제로 주문할 수 있는 시점과 체결가로 다시 검증해야 합니다.",
+        en: "The close rose from $100 to $104, so the 4% return met the buy threshold. The signal was available at 16:00, five minutes after the order cutoff. Using a price that was unavailable at the order cutoff introduced look-ahead bias. Re-run the backtest with an order time and fill price available after the signal."
       }
     }
   ];
