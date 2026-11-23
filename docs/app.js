@@ -2,7 +2,7 @@
 
 const labels = {
   en: {
-    index: "Case index", skip: "Skip to case", instruction: "Make your call, then check it in Python, Rust, Go or Java.",
+    index: "Case index", skip: "Skip to case", instruction: "Make your call, then reproduce the review in code.",
     claim: "The author’s claim", evidence: "View evidence", choice: "Your verdict",
     approve: "Approve", revise: "Request changes", evidenceChoice: "Request more evidence",
     matched: "You and the reviewer agree", different: "The reviewer made a different call",
@@ -10,11 +10,15 @@ const labels = {
     card: "Save question card (PNG)", share: "Copy case link",
     shared: "Unsolved link copied.", fallback: "Select and copy the text below.", report: "Copy my pilot result",
     reported: "Result copied. You can send it to the person who invited you.", feedback: "Give feedback on GitHub",
-    next: "Next case", revisit: "Back to case", time: "Active seconds to first verdict", opened: "Source table opened before verdict",
-    first: "First verdict", caseWord: "Case", yes: "Yes", no: "No", answerClip: "Pilot result", manual: "Text to copy"
+    next: "Next case", time: "Active seconds to first verdict", opened: "Source table opened before verdict",
+    first: "First verdict", caseWord: "Case", yes: "Yes", no: "No", answerClip: "Pilot result", manual: "Text to copy",
+    progress: (reviewed, total) => reviewed + " of " + total + " reviewed",
+    score: (matched, total) => matched + " of " + total + " verdicts matched",
+    session: "Session review", viewSession: "View session review", copySession: "Copy results (TSV)",
+    copiedSession: "Results copied. Paste them into a spreadsheet.", close: "Close"
   },
   ko: {
-    index: "문제 목록", skip: "문제로 건너뛰기", instruction: "먼저 판정해 보세요. 풀이는 Python, Rust, Go, Java로 검산할 수 있습니다.",
+    index: "문제 목록", skip: "문제로 건너뛰기", instruction: "먼저 판정하고, 코드로 결과를 검산해 보세요.",
     claim: "작성자의 주장", evidence: "근거 열기", choice: "나의 판정",
     approve: "승인", revise: "수정 요청", evidenceChoice: "추가 자료 요청",
     matched: "검토자와 같은 판정을 내렸습니다", different: "검토자는 다르게 판단했습니다",
@@ -22,16 +26,15 @@ const labels = {
     card: "문제 카드 저장 (PNG)", share: "문제 링크 복사",
     shared: "정답 없는 링크를 복사했습니다.", fallback: "아래 텍스트를 선택해 복사해 주세요.", report: "내 파일럿 결과 복사",
     reported: "결과를 복사했습니다. 초대한 사람에게 직접 보낼 수 있습니다.", feedback: "GitHub에 의견 남기기",
-    next: "다음 문제", revisit: "다시 보기", time: "첫 판정까지 문제를 본 시간(초)", opened: "판정 전 원자료 열람",
-    first: "첫 판정", caseWord: "문제", yes: "예", no: "아니오", answerClip: "파일럿 결과", manual: "복사할 텍스트"
+    next: "다음 문제", time: "첫 판정까지 문제를 본 시간(초)", opened: "판정 전 원자료 열람",
+    first: "첫 판정", caseWord: "문제", yes: "예", no: "아니오", answerClip: "파일럿 결과", manual: "복사할 텍스트",
+    progress: (reviewed, total) => total + "개 중 " + reviewed + "개 검토 완료",
+    score: (matched, total) => total + "개 중 " + matched + "개 판정 일치",
+    session: "전체 검토 결과", viewSession: "전체 검토 결과 보기", copySession: "결과 복사 (TSV)",
+    copiedSession: "결과를 복사했습니다. 스프레드시트에 붙여넣을 수 있습니다.", close: "닫기"
   }
 };
-const programs = {
-  python: { file: "check.py", command: "python3 check.py" },
-  rust: { file: "check.rs", command: "rustc check.rs -o check && ./check" },
-  go: { file: "check.go", command: "go run check.go" },
-  java: { file: "Check.java", command: "java Check.java" }
-};
+const programs = globalThis.CHECK_PROGRAMS;
 const cases = window.PILOT_CASES;
 const sessions = new Map();
 const $ = id => document.getElementById(id);
@@ -92,6 +95,8 @@ function renderProgram() {
 }
 function renderResult() {
   const answer = current.answer;
+  const reviewed = cases.filter(c => sessions.get(c.id)?.answer).length;
+  $("progress-count").textContent = ui.progress(reviewed, cases.length);
   $("result").hidden = !answer;
   const replay = $("candle-replay");
   replay.hidden = !answer || item.id !== "candle";
@@ -107,9 +112,13 @@ function renderResult() {
   const index = cases.indexOf(item);
   const later = [...cases.slice(index + 1), ...cases.slice(0, index)];
   const unsolved = later.find(c => !sessions.get(c.id)?.answer);
-  const other = unsolved || later[0];
-  $("next").textContent = (unsolved ? ui.next : ui.revisit) + " · " + other.title[lang];
-  routeLink($("next"), other.id, lang);
+  $("next").hidden = !unsolved;
+  $("view-review").hidden = Boolean(unsolved);
+  if (unsolved) {
+    $("next").textContent = ui.next + " · " + unsolved.title[lang];
+    routeLink($("next"), unsolved.id, lang);
+  }
+  $("view-review").textContent = ui.viewSession;
   $("report").textContent = ui.report;
 }
 function renderChoices() {
@@ -132,6 +141,7 @@ function renderChoices() {
   }));
 }
 function render() {
+  if ($("session-review").open) $("session-review").close();
   if (current) {
     recordEvidence();
     pauseTimer();
@@ -180,19 +190,49 @@ function render() {
   $("copy-fallback").setAttribute("aria-label", ui.manual); $("feedback").textContent = ui.feedback;
   $("source").textContent = lang === "ko" ? "GitHub에서 스타 남기기" : "Star on GitHub";
 }
-async function copy(text, success) {
+async function copy(text, success, status = $("copy-status"), field = $("copy-fallback")) {
   const request = ++copyRequest;
-  $("copy-fallback").hidden = true;
-  $("copy-status").textContent = "";
+  field.hidden = true;
+  status.textContent = "";
   try {
     await navigator.clipboard.writeText(text);
-    if (request === copyRequest) $("copy-status").textContent = success;
+    if (request === copyRequest) status.textContent = success;
   } catch {
     if (request !== copyRequest) return;
-    const field = $("copy-fallback");
     field.value = text; field.hidden = false; field.focus(); field.select();
-    $("copy-status").textContent = ui.fallback;
+    status.textContent = ui.fallback;
   }
+}
+function openSessionReview() {
+  if (cases.some(c => !sessions.get(c.id)?.answer)) return;
+  const matched = cases.filter(c => sessions.get(c.id).answer === c.correct).length;
+  $("session-title").textContent = ui.session;
+  $("session-score").textContent = ui.score(matched, cases.length);
+  $("session-case").textContent = ui.caseWord;
+  $("session-first").textContent = ui.first;
+  $("session-verdict").textContent = ui.rationale;
+  $("session-rows").replaceChildren(...cases.map(c => {
+    const row = document.createElement("tr");
+    const title = elm("th", c.title[lang]);
+    title.scope = "row";
+    row.append(title, elm("td", choiceText(sessions.get(c.id).answer)), elm("td", choiceText(c.correct)));
+    return row;
+  }));
+  $("copy-session").textContent = ui.copySession;
+  $("close-review").textContent = ui.close;
+  $("session-copy-status").textContent = "";
+  $("session-copy-fallback").hidden = true;
+  $("session-copy-fallback").setAttribute("aria-label", ui.manual);
+  $("session-review").showModal();
+}
+function copySessionReview() {
+  const rows = cases.map(c => {
+    const { answer, seconds, sawEvidence } = sessions.get(c.id);
+    return [c.id, answer, c.correct, seconds, sawEvidence];
+  });
+  const header = ["case_id", "first_verdict", "reviewer_verdict", "active_seconds", "evidence_opened"];
+  const content = [header, ...rows].map(row => row.join("\t")).join("\n");
+  copy(content, ui.copiedSession, $("session-copy-status"), $("session-copy-fallback"));
 }
 $("evidence").addEventListener("toggle", recordEvidence);
 document.addEventListener("visibilitychange", () => {
@@ -200,12 +240,17 @@ document.addEventListener("visibilitychange", () => {
   else resumeTimer();
 });
 $("check-language").onchange = renderProgram;
+$("check-language").replaceChildren(...Object.entries(programs).map(([value, program]) => new Option(program.label, value)));
 $("skip").onclick = event => {
   event.preventDefault();
   $("question").focus();
   $("question").scrollIntoView();
 };
 $("share").onclick = () => copy(urlFor(item.id, lang, true), ui.shared);
+$("view-review").onclick = openSessionReview;
+$("copy-session").onclick = copySessionReview;
+$("close-review").onclick = () => $("session-review").close();
+$("session-review").addEventListener("close", () => copyRequest++);
 $("report").onclick = () => {
   const lines = [ui.answerClip + " · v3 · " + item.id, ui.first + ": " + choiceText(current.answer), ui.time + ": " + current.seconds,
     ui.opened + ": " + (current.sawEvidence ? ui.yes : ui.no)];
