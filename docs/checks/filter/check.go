@@ -1,9 +1,10 @@
-// Run: go run check.go
+// Run: go run check.go 11010 (optional A–E mask; 1 keeps a trade).
 package main
 
 import (
 	"fmt"
-	"log"
+	"os"
+	"strings"
 )
 
 type totals struct{ wins, trades, net int }
@@ -17,21 +18,23 @@ func (t *totals) add(pnl int) {
 }
 
 func main() {
-	// Net P&L in USD and whether the filter kept the trade, A through E.
-	ledger := []struct {
-		pnl  int
-		kept bool
-	}{{4, true}, {4, true}, {20, false}, {-3, true}, {-3, false}}
-
-	var original, filtered totals
-	for _, trade := range ledger {
-		original.add(trade.pnl)
-		if trade.kept {
-			filtered.add(trade.pnl)
-		}
+	mask := "11010"
+	if len(os.Args) > 1 {
+		mask = os.Args[1]
 	}
-	if original != (totals{3, 5, 22}) || filtered != (totals{2, 3, 5}) {
-		log.Fatal("totals differ from the ledger")
+	if len(os.Args) > 2 || len(mask) != 5 || strings.Trim(mask, "01") != "" {
+		fmt.Fprintln(os.Stderr, "Expected one optional five-digit A-E mask, e.g. 11010")
+		os.Exit(1)
+	}
+
+	// Trade A through E, net P&L in USD after costs.
+	ledger := [...]int{4, 4, 20, -3, -3}
+	var original, filtered totals
+	for i, pnl := range ledger {
+		original.add(pnl)
+		if mask[i] == '1' {
+			filtered.add(pnl)
+		}
 	}
 
 	fmt.Printf("Original: %d/%d wins, net %d USD\n", original.wins, original.trades, original.net)

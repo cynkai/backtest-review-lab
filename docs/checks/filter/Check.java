@@ -1,25 +1,26 @@
-// Run: java Check.java (JDK 17+)
-import java.util.List;
+// Run: java Check.java 11010 (JDK 17+, optional A–E mask; 1 keeps a trade).
+import java.util.Arrays;
+import java.util.stream.IntStream;
 
 class Check {
-    record Trade(int pnl, boolean kept) {}
-
     public static void main(String[] args) {
-        // Net P&L in USD and whether the filter kept the trade, A through E.
-        var original = List.of(new Trade(4, true), new Trade(4, true),
-                new Trade(20, false), new Trade(-3, true), new Trade(-3, false));
-        var filtered = original.stream().filter(Trade::kept).toList();
-        int originalNet = original.stream().mapToInt(Trade::pnl).sum();
-        int filteredNet = filtered.stream().mapToInt(Trade::pnl).sum();
-        long originalWins = original.stream().filter(t -> t.pnl() > 0).count();
-        long filteredWins = filtered.stream().filter(t -> t.pnl() > 0).count();
-        if (originalNet != 22 || filteredNet != 5 || originalWins != 3
-                || filteredWins != 2 || original.size() != 5 || filtered.size() != 3) {
-            throw new AssertionError("Totals differ from the ledger");
+        String mask = args.length == 0 ? "11010" : args[0];
+        if (args.length > 1 || !mask.matches("[01]{5}")) {
+            System.err.println("Expected one optional five-digit A-E mask, e.g. 11010");
+            System.exit(1);
         }
 
-        System.out.printf("Original: %d/%d wins, net %d USD%n", originalWins, original.size(), originalNet);
-        System.out.printf("Filtered: %d/%d wins, net %d USD%n", filteredWins, filtered.size(), filteredNet);
+        // Trade A through E, net P&L in USD after costs.
+        int[] original = {4, 4, 20, -3, -3};
+        int[] filtered = IntStream.range(0, original.length)
+                .filter(i -> mask.charAt(i) == '1').map(i -> original[i]).toArray();
+        int originalNet = Arrays.stream(original).sum();
+        int filteredNet = Arrays.stream(filtered).sum();
+        long originalWins = Arrays.stream(original).filter(pnl -> pnl > 0).count();
+        long filteredWins = Arrays.stream(filtered).filter(pnl -> pnl > 0).count();
+
+        System.out.printf("Original: %d/%d wins, net %d USD%n", originalWins, original.length, originalNet);
+        System.out.printf("Filtered: %d/%d wins, net %d USD%n", filteredWins, filtered.length, filteredNet);
         System.out.printf("Change in net profit: %d USD%n", filteredNet - originalNet);
     }
 }

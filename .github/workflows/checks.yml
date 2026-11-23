@@ -8,6 +8,17 @@ permissions:
   contents: read
 
 jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install the browser test tools
+        run: |
+          npm install --no-save --no-package-lock --ignore-scripts playwright@1.62.1
+          npx --no-install playwright install --with-deps chromium
+      - name: Exercise the hosted and offline review flows
+        run: node tests/browser-review.mjs
+
   reproduce:
     runs-on: ubuntu-24.04
     steps:

@@ -180,6 +180,63 @@ async function verifyHostedReview(page, origin) {
   assert.equal(await review.isHidden(), true);
 }
 
+async function verifyExperiments(page, origin) {
+  await page.goto(origin + "/?case=filter&lang=en");
+  assert.equal(await page.locator("#experiment").isHidden(), true);
+  await page.getByRole("button", { name: "Request changes", exact: true }).click();
+  const sheet = page.locator("#experiment");
+  const value = key => sheet.locator('[data-value="' + key + '"]').textContent();
+  assert.equal(await value("net"), "+$5");
+  await sheet.locator('[data-trade="C"]').check();
+  assert.equal(await value("net"), "+$25");
+  assert.equal(await value("delta"), "+$3");
+  assert.equal(await value("wins"), "75.0%");
+  await page.locator("#python-title").click();
+  const commands = {
+    go: "go run check.go 11110", rust: "rustc check.rs -o check && ./check 11110",
+    dart: "dart run check.dart 11110", zig: "zig run check.zig -- 11110",
+    python: "python3 check.py 11110", java: "java Check.java 11110"
+  };
+  for (const [key, command] of Object.entries(commands)) {
+    await page.locator("#check-language").selectOption(key);
+    assert.equal(await page.locator("#check-command").textContent(), command);
+  }
+  await page.locator("#copy-command").click();
+  assert.equal(await page.locator("#command-fallback").inputValue(), commands.java);
+  await page.locator("#korean").click();
+  assert.equal(await value("net"), "+$25");
+  assert.equal(await page.locator("#choices [aria-pressed=true]").textContent(), "수정 요청");
+  for (const input of await sheet.getByRole("checkbox").all()) await input.uncheck();
+  assert.equal(await value("wins"), "해당 없음");
+  assert.equal(await value("net"), "$0");
+  assert.equal(await value("delta"), "−$22");
+  await sheet.locator('[data-action="reset"]').click();
+  assert.equal(await value("net"), "+$5");
+
+  await page.locator('#case-links a[href*="case=fees"]').click();
+  assert.equal(await sheet.isHidden(), true);
+  await page.getByRole("button", { name: "승인", exact: true }).click();
+  assert.equal(await value("net"), "+$5.00");
+  await sheet.locator('[data-action="breakeven"]').click();
+  assert.equal(await value("net"), "$0.00");
+  await sheet.getByRole("slider").press("ArrowRight");
+  assert.equal(await value("net"), "−$0.01");
+  await page.locator("#english").click();
+  assert.equal(await value("net"), "−$0.01");
+  await page.locator("#python-title").click();
+  await page.locator("#check-language").selectOption("zig");
+  assert.equal(await page.locator("#check-command").textContent(), "zig run check.zig -- 676");
+  await page.locator('#case-links a[href*="case=filter"]').click();
+  await page.locator('#case-links a[href*="case=fees"]').click();
+  assert.equal(await value("net"), "−$0.01");
+  await sheet.getByRole("slider").press("End");
+  assert.equal(await value("net"), "−$3.25");
+  await sheet.locator('[data-action="reset"]').click();
+  assert.equal(await value("net"), "+$5.00");
+  assert.equal(await page.locator("#progress-count").textContent(), "2 of 4 reviewed");
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+}
+
 async function verifyOfflineReview(page) {
   try {
     await page.goto(new URL("../docs/index.html?case=filter&lang=en", import.meta.url).href);
@@ -213,6 +270,8 @@ try {
   await verifyHostedReview(page, "http://127.0.0.1:" + server.address().port);
   assert.deepEqual(pageErrors, []);
   console.log("Hosted browser review passed.");
+  await verifyExperiments(page, "http://127.0.0.1:" + server.address().port);
+  console.log("Filter and commission experiments passed.");
   await verifyOfflineReview(page);
   assert.deepEqual(pageErrors, []);
 } finally {
