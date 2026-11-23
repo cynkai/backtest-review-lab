@@ -15,7 +15,7 @@ const labels = {
     progress: (reviewed, total) => reviewed + " of " + total + " reviewed",
     score: (matched, total) => matched + " of " + total + " verdicts matched",
     session: "Session review", viewSession: "View session review", copySession: "Copy results (TSV)",
-    copiedSession: "Results copied. Paste them into a spreadsheet.", close: "Close"
+    downloadSession: "Download results (TSV)", copiedSession: "Results copied. Paste them into a spreadsheet.", close: "Close"
   },
   ko: {
     index: "문제 목록", skip: "문제로 건너뛰기", instruction: "먼저 판정하고, 코드로 결과를 검산해 보세요.",
@@ -31,7 +31,7 @@ const labels = {
     progress: (reviewed, total) => total + "개 중 " + reviewed + "개 검토 완료",
     score: (matched, total) => total + "개 중 " + matched + "개 판정 일치",
     session: "전체 검토 결과", viewSession: "전체 검토 결과 보기", copySession: "결과 복사 (TSV)",
-    copiedSession: "결과를 복사했습니다. 스프레드시트에 붙여넣을 수 있습니다.", close: "닫기"
+    downloadSession: "결과 다운로드 (TSV)", copiedSession: "결과를 복사했습니다. 스프레드시트에 붙여넣을 수 있습니다.", close: "닫기"
   }
 };
 const programs = globalThis.CHECK_PROGRAMS;
@@ -41,6 +41,7 @@ const $ = id => document.getElementById(id);
 const choices = ["approve", "revise", "evidence"];
 let item, lang, ui, current;
 let copyRequest = 0;
+let sessionTsv;
 const choiceText = value => ui[value === "evidence" ? "evidenceChoice" : value];
 function urlFor(id, language, share = false) {
   const url = share && !/^https?:$/.test(location.protocol) ? new URL("https://cynkai.github.io/backtest-review-lab/") : new URL(location.href);
@@ -219,20 +220,26 @@ function openSessionReview() {
     return row;
   }));
   $("copy-session").textContent = ui.copySession;
+  const download = $("download-session");
+  download.textContent = ui.downloadSession;
+  if (sessionTsv === undefined) {
+    sessionTsv = buildSessionTsv();
+    // First verdicts are fixed, so this URL can be reused until the page unloads.
+    download.href = URL.createObjectURL(new Blob([sessionTsv], { type: "text/tab-separated-values;charset=utf-8" }));
+  }
   $("close-review").textContent = ui.close;
   $("session-copy-status").textContent = "";
   $("session-copy-fallback").hidden = true;
   $("session-copy-fallback").setAttribute("aria-label", ui.manual);
   $("session-review").showModal();
 }
-function copySessionReview() {
+function buildSessionTsv() {
   const rows = cases.map(c => {
     const { answer, seconds, sawEvidence } = sessions.get(c.id);
     return [c.id, answer, c.correct, seconds, sawEvidence];
   });
   const header = ["case_id", "first_verdict", "reviewer_verdict", "active_seconds", "evidence_opened"];
-  const content = [header, ...rows].map(row => row.join("\t")).join("\n");
-  copy(content, ui.copiedSession, $("session-copy-status"), $("session-copy-fallback"));
+  return [header, ...rows].map(row => row.join("\t")).join("\n");
 }
 $("evidence").addEventListener("toggle", recordEvidence);
 document.addEventListener("visibilitychange", () => {
@@ -248,7 +255,7 @@ $("skip").onclick = event => {
 };
 $("share").onclick = () => copy(urlFor(item.id, lang, true), ui.shared);
 $("view-review").onclick = openSessionReview;
-$("copy-session").onclick = copySessionReview;
+$("copy-session").onclick = () => copy(sessionTsv, ui.copiedSession, $("session-copy-status"), $("session-copy-fallback"));
 $("close-review").onclick = () => $("session-review").close();
 $("session-review").addEventListener("close", () => copyRequest++);
 $("report").onclick = () => {

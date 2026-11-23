@@ -145,7 +145,8 @@ async function verifyHostedReview(page, origin) {
   await review.locator("#copy-session").click();
   const exportField = review.locator("#session-copy-fallback");
   await exportField.waitFor({ state: "visible" });
-  const [header, ...rows] = (await exportField.inputValue()).trimEnd().split("\n");
+  const exported = await exportField.inputValue();
+  const [header, ...rows] = exported.trimEnd().split("\n");
   assert.equal(header, "case_id\tfirst_verdict\treviewer_verdict\tactive_seconds\tevidence_opened");
   const records = rows.map(row => row.split("\t"));
   assert.deepEqual(records.map(([id, first, reviewer, seconds, opened]) => {
@@ -158,6 +159,14 @@ async function verifyHostedReview(page, origin) {
     ["lookahead", "revise", "revise", "true"]
   ]);
   assert.equal(records[0][3], activeSeconds[1]);
+  await page.context().setOffline(true);
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    review.getByRole("link", { name: "결과 다운로드 (TSV)" }).click()
+  ]);
+  assert.equal(download.suggestedFilename(), "backtest-review-results.tsv");
+  assert.equal(await readFile(await download.path(), "utf8"), exported);
+  await page.context().setOffline(false);
   await review.locator("#close-review").click();
   assert.equal(await review.isHidden(), true);
   assert.equal(await reviewButton.evaluate(button => button === document.activeElement), true);
@@ -166,6 +175,7 @@ async function verifyHostedReview(page, origin) {
   assert.equal(await progress.textContent(), "4 of 4 reviewed");
   await reviewButton.click();
   assert.equal(await review.locator("#session-score").textContent(), "3 of 4 verdicts matched");
+  assert.equal(await review.getByRole("link", { name: "Download results (TSV)" }).isVisible(), true);
   await page.keyboard.press("Escape");
   assert.equal(await review.isHidden(), true);
 }
