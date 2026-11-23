@@ -10,7 +10,7 @@ const context = { window: {} };
 const docs = fileURLToPath(new URL("../docs/", import.meta.url));
 runInNewContext(readFileSync(join(docs, "cases.js"), "utf8"), context);
 const cases = context.window.PILOT_CASES;
-const verdicts = { filter: "revise", candle: "evidence", fees: "approve" };
+const verdicts = { filter: "revise", candle: "evidence", fees: "approve", lookahead: "revise" };
 
 function expectedFromEvidence(item) {
   switch (item.id) {
@@ -36,6 +36,25 @@ function expectedFromEvidence(item) {
       const gross = quantity * (sellCents - buyCents);
       const fees = buyFeeCents + sellFeeCents;
       return `Gross: ${gross} cents\nFees: ${fees} cents\nNet: ${gross - fees} cents`;
+    }
+    case "lookahead": {
+      const { previousClose, close, thresholdPercent, orderCutoff, closeAvailable } = item.data;
+      const returnPercent = 100 * (close - previousClose) / previousClose;
+      const minutes = time => {
+        assert.match(time, /^(?:[01]\d|2[0-3]):[0-5]\d$/);
+        const [hours, minutes] = time.split(":").map(Number);
+        return hours * 60 + minutes;
+      };
+      const delay = minutes(closeAvailable) - minutes(orderCutoff);
+      // The price triggers the rule. The order deadline rules out the claimed fill.
+      assert.ok(returnPercent >= thresholdPercent);
+      assert.ok(delay > 0);
+      return [
+        `Close-to-close return: ${returnPercent.toFixed(1)}%`,
+        "Buy signal: yes",
+        `Signal availability relative to cutoff (minutes): ${delay}`,
+        "Same-close fill eligible: no"
+      ].join("\n");
     }
     default:
       throw new Error("Missing reference calculation for " + item.id);

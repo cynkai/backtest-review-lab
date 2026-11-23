@@ -15,9 +15,10 @@ HEADLINES = {
     "filter": {"en": ("The win rate went up.", "Did the profit?"), "ko": ("승률은 올랐다.", "순손익도 올랐을까?")},
     "candle": {"en": ("Two exits. One candle.", "Which order filled?"), "ko": ("익절과 손절,", "어느 쪽이 먼저였을까?")},
     "fees": {"en": ("Two commissions later,", "what did the trade earn?"), "ko": ("수수료를 두 번 내고,", "얼마가 남았을까?")},
+    "lookahead": {"en": ("A signal at the close.", "Could the order fill?"), "ko": ("종가로 낸 매수 신호,", "주문은 체결됐을까?")},
 }
 
-def draw_card(case, index, language, fonts):
+def draw_card(case, index, language, fonts, case_count):
     image = Image.new("RGB", (1200, 630), PAPER)
     draw = ImageDraw.Draw(image)
     korean = language == "ko"
@@ -48,7 +49,7 @@ def draw_card(case, index, language, fonts):
         section = case["category"][language]
     else:
         lines = ("Would you sign off", "on this backtest?")
-        facts = [("Review files", "3 cases"), ("Reproduce in", "Python / Rust / Go / Java")]
+        facts = [("Review files", f"{case_count} cases"), ("Reproduce in", "Python / Rust / Go / Java")]
         url, section = BASE, "A collection of quant review puzzles"
     text(58, 148, section, label, 25, ACCENT)
     for y, line in zip((200, 298), lines):
@@ -88,8 +89,8 @@ def main():
     output.mkdir(exist_ok=True)
     for i, case in enumerate(cases, start=1):
         for lang in ("en", "ko"):
-            draw_card(case, i, lang, fonts).save(output / f"{case['id']}-{lang}.png", optimize=True)
-    draw_card(None, 0, "en", fonts).save(output / "cover.png", optimize=True)
+            draw_card(case, i, lang, fonts, len(cases)).save(output / f"{case['id']}-{lang}.png", optimize=True)
+    draw_card(None, 0, "en", fonts, len(cases)).save(output / "cover.png", optimize=True)
 
 if __name__ == "__main__":
     main()

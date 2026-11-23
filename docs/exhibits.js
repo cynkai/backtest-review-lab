@@ -104,6 +104,83 @@
     };
   }
 
+  function candleReplayPlot({ bar, stop, target }, highFirst, ko) {
+    const prices = highFirst
+      ? [bar.open, bar.high, bar.low, bar.close]
+      : [bar.open, bar.low, bar.high, bar.close];
+    const names = ko ? ["시가", "고가", "저가", "종가"] : ["Open", "High", "Low", "Close"];
+    const sequence = highFirst ? names : [names[0], names[2], names[1], names[3]];
+    const plot = chart("0 0 410 178", prices.map((price, i) => sequence[i] + " $" + price).join(", "));
+    const xs = [30, 116, 202, 288];
+    const y = price => 14 + (bar.high - price) * 110 / (bar.high - bar.low);
+    const exit = highFirst ? target : stop;
+    const exitX = xs[0] + (xs[1] - xs[0]) * (exit - bar.open) / (prices[1] - bar.open);
+
+    for (const [price, name] of [[target, ko ? "익절" : "Target"], [stop, ko ? "손절" : "Stop"]]) {
+      const color = price === exit ? accent : muted;
+      line(plot, 14, y(price), 310, y(price), color, 1, { "stroke-dasharray": "5 4" });
+      label(plot, 318, y(price) + 5, name + " $" + price, { fill: color });
+    }
+
+    plot.append(svgNode("polyline", {
+      points: prices.map((price, i) => xs[i] + "," + y(price)).join(" "),
+      fill: "none", stroke: ink, "stroke-width": 2, "stroke-linejoin": "round"
+    }));
+    plot.append(svgNode("circle", {
+      cx: exitX, cy: y(exit), r: 5, fill: accent, stroke: "var(--sheet)", "stroke-width": 1.5
+    }));
+
+    prices.forEach((price, i) => {
+      const x = xs[i];
+      const centered = { "text-anchor": "middle" };
+      plot.append(svgNode("circle", { cx: x, cy: y(price), r: 3, fill: ink }));
+      label(plot, x, 150, sequence[i], { fill: muted, ...centered });
+      label(plot, x, 169, "$" + price, { "font-family": mono, ...centered });
+    });
+    return plot;
+  }
+
+  window.renderCandleReplay = (container, data, lang) => {
+    const ko = lang === "ko";
+    const selected = container.querySelector("input:checked")?.value ?? "high";
+    const heading = element("h3", ko ? "같은 봉, 다른 청산" : "Same bar, different exits", "replay-heading");
+    const controls = element("div", "", "replay-controls");
+    const fieldset = document.createElement("fieldset");
+    fieldset.append(element("legend", ko ? "가격 경로 선택" : "Choose a price path"));
+    const plot = element("div", "", "replay-plot");
+    const summary = element("p", "", "replay-summary");
+    summary.setAttribute("role", "status");
+    const note = element("p", ko
+      ? "두 경로 모두 같은 시가·고가·저가·종가를 만듭니다. 가로 위치는 순서만 나타냅니다."
+      : "Both paths have the same open, high, low and close. Horizontal spacing shows order only.", "replay-note");
+
+    function showPath(value) {
+      const highFirst = value === "high";
+      plot.replaceChildren(candleReplayPlot(data, highFirst, ko));
+      summary.textContent = highFirst
+        ? (ko ? "익절가 $" + data.target + "에 먼저 닿아 손절 주문이 취소됩니다."
+          : "Price touches the $" + data.target + " target first, cancelling the stop.")
+        : (ko ? "손절가 $" + data.stop + "에 먼저 닿아 익절 주문이 취소됩니다."
+          : "Price touches the $" + data.stop + " stop first, cancelling the target.");
+    }
+
+    for (const [value, title] of [["high", ko ? "고가 먼저" : "High first"], ["low", ko ? "저가 먼저" : "Low first"]]) {
+      const option = document.createElement("label");
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = "candle-path";
+      input.value = value;
+      input.checked = value === selected;
+      input.addEventListener("change", () => showPath(value));
+      option.append(input, " ", title);
+      fieldset.append(option);
+    }
+    controls.append(fieldset);
+    container.classList.add("candle-replay");
+    container.replaceChildren(heading, controls, plot, summary, note);
+    showPath(selected);
+  };
+
   function feeExhibit(receipt, ko) {
     const plot = element("table", "", "fee-ticket");
     const title = ko ? "현금 입출금 내역" : "The cash ledger";
@@ -135,7 +212,27 @@
     };
   }
 
-  const exhibitFor = { filter: ledgerExhibit, candle: candleExhibit, fees: feeExhibit };
+  function lookaheadExhibit({ orderCutoff, closeAvailable }, ko) {
+    const events = [
+      { x: 78, time: orderCutoff, name: ko ? "주문 마감" : "Order cutoff" },
+      { x: 241, time: closeAvailable, name: ko ? "공식 종가 공개" : "Official close available" }
+    ];
+    const plot = chart("0 0 330 96", events.map(({ time, name }) => time + " " + name).join(", "));
+    line(plot, 16, 51, 313, 51, muted);
+    plot.append(svgNode("path", { d: "M307 46 L313 51 L307 56", fill: "none", stroke: muted }));
+    for (const { x, time, name } of events) {
+      label(plot, x, 31, time, { "font-family": mono, "font-size": 21, "text-anchor": "middle" });
+      plot.append(svgNode("circle", { cx: x, cy: 51, r: 4, fill: ink }));
+      label(plot, x, 80, name, { "text-anchor": "middle" });
+    }
+    return {
+      title: ko ? "장 마감 전후 기록" : "Events around the close",
+      plot,
+      note: ko ? "시각은 거래소 현지 시간입니다." : "Times are local to the exchange."
+    };
+  }
+
+  const exhibitFor = { filter: ledgerExhibit, candle: candleExhibit, fees: feeExhibit, lookahead: lookaheadExhibit };
   window.renderExhibit = (container, caseId, lang) => {
     const item = window.PILOT_CASES.find(c => c.id === caseId);
     const { title, plot, note } = exhibitFor[item.id](item.data, lang === "ko");
