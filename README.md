@@ -17,6 +17,15 @@ An entry filter takes a strategy’s win rate from 60.0% to 66.7%. The author sa
 
 Each case uses synthetic records. Inspect the evidence and choose **approve**, **request changes**, or **request more evidence**. The review opens after your first call. In the candle review, switch between two price paths to see which exit triggers first. A downloadable question card includes a QR code that opens the unsolved case in the same language.
 
+## Change the assumptions
+
+After your first verdict, try these two experiments with the same source records.
+
+- **Trade filter.** Keep or skip each of the five trades. Watch the win rate alongside net profit and see how much each skipped winner or loser contributes to the change. Keeping no trades gives zero profit and an undefined win rate.
+- **Commissions.** Change the exit commission on a single round trip. The entry fee stays at $1.25. Jump to the break-even exit fee or increase it further to turn a gross gain into a net loss.
+
+The code panel follows the controls. Download the source and copy the current command. For example, in the filter directory, `go run check.go 11110` keeps A through D. In the fees directory, `zig run check.zig -- 675` uses a $6.75 exit fee. Running a file without an argument reproduces the original case. Changing an experiment keeps your first verdict and the session export intact.
+
 ## Reproduce a verdict
 
 Open the code panel after a verdict. Choose a language and download its source file. Each file runs independently with the standard library. From the directory containing the downloaded file, use the command for your language.
@@ -29,6 +38,8 @@ Open the code panel after a verdict. Choose a language and download its source f
 | Zig 0.15.2 | [check.zig](docs/checks/filter/check.zig) | `zig run check.zig` |
 | Python 3 | [check.py](docs/checks/filter/check.py) | `python3 check.py` |
 | Java 17+ | [Check.java](docs/checks/filter/Check.java) | `java Check.java` |
+
+On Apple Silicon with macOS 27, if Zig 0.15.2 reports missing system symbols, pass an explicit deployment target. For example, run `zig run -target aarch64-macos.13.0 check.zig -- 675` in the fees directory.
 
 To run the entire set, clone the repository and run `node tests/check-cases.mjs all` with the six toolchains on your PATH. To run one language, replace `all` with `go`, `rust`, `dart`, `zig`, `python`, or `java`. The checks compare each program’s output with the evidence shown in the browser.
 
@@ -45,6 +56,8 @@ If a case sparked a disagreement, or a real review gave you an idea for another 
 ## 한국어
 
 [거래 원장](https://cynkai.github.io/backtest-review-lab/?case=filter&lang=ko), [5분봉과 두 주문](https://cynkai.github.io/backtest-review-lab/?case=candle&lang=ko), [체결 명세서](https://cynkai.github.io/backtest-review-lab/?case=fees&lang=ko), [종가로 낸 매수 신호](https://cynkai.github.io/backtest-review-lab/?case=lookahead&lang=ko) 중 하나를 고르세요. 판정 뒤에 Go·Rust·Dart·Zig·Python·Java 풀이를 골라 내려받을 수 있습니다. 5분봉 사례에서는 두 가격 경로를 바꿔 보며 어느 주문이 먼저 체결되는지 확인할 수 있습니다. 스터디에서는 화면 아래의 **문제 카드 저장 (PNG)** 으로 정답이 가려진 카드를 공유하세요.
+
+거래 원장에서는 판정 뒤 A~E 거래를 직접 선택해 승률과 순손익을 비교할 수 있습니다. 체결 명세서에서는 매도 수수료를 조절해 순손익이 0이 되는 지점을 찾습니다. 선택한 값은 검산 코드의 실행 명령에도 반영되며, 기존 첫 판정과 세션 기록은 보존됩니다.
 
 문제 목록에서 답한 문제 수를 확인할 수 있습니다. 모든 문제에 답하면 최종 검토 화면에서 문제별 첫 판정과 검토자 판정을 비교할 수 있습니다. 전체 판정, 문제별 활동 시간, 판정 전 근거 열람 여부를 스프레드시트용 TSV로 복사하거나 내려받을 수 있습니다. 결과는 현재 페이지를 열어 둔 동안만 메모리에 남습니다.
 

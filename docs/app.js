@@ -2,6 +2,7 @@
 
 const labels = {
   en: {
+    runIn: "Run this in the folder where you saved the source file.", copyCommand: "Copy command", commandCopied: "Command copied.",
     index: "Case index", skip: "Skip to case", instruction: "Make your call, then reproduce the review in code.",
     claim: "The author’s claim", evidence: "View evidence", choice: "Your verdict",
     approve: "Approve", revise: "Request changes", evidenceChoice: "Request more evidence",
@@ -18,6 +19,7 @@ const labels = {
     downloadSession: "Download results (TSV)", copiedSession: "Results copied. Paste them into a spreadsheet.", close: "Close"
   },
   ko: {
+    runIn: "소스 파일을 저장한 폴더에서 실행하세요.", copyCommand: "실행 명령 복사", commandCopied: "실행 명령을 복사했습니다.",
     index: "문제 목록", skip: "문제로 건너뛰기", instruction: "먼저 판정하고, 코드로 결과를 검산해 보세요.",
     claim: "작성자의 주장", evidence: "근거 열기", choice: "나의 판정",
     approve: "승인", revise: "수정 요청", evidenceChoice: "추가 자료 요청",
@@ -85,11 +87,20 @@ function routeLink(a, id, language) {
     if (changed) { $("question").focus({preventScroll: true}); window.scrollTo(0, 0); }
   };
 }
+function renderCommand() {
+  const program = programs[$("check-language").value];
+  const argument = current.experimentArg;
+  const separator = $("check-language").value === "zig" ? " -- " : " ";
+  $("check-command").textContent = program.command + (argument === undefined ? "" : separator + argument);
+  copyRequest++;
+  $("code-status").textContent = "";
+  $("command-fallback").hidden = true;
+}
 function renderProgram() {
   const language = $("check-language").value;
   const program = programs[language];
   $("check").textContent = window.CHECK_SOURCES[item.id][language];
-  $("check-command").textContent = program.command;
+  renderCommand();
   $("check-source").href = "checks/" + item.id + "/" + program.file;
   $("check-source").download = program.file;
   $("check-source").textContent = ui.download + " · " + program.file;
@@ -99,6 +110,9 @@ function renderResult() {
   const reviewed = cases.filter(c => sessions.get(c.id)?.answer).length;
   $("progress-count").textContent = ui.progress(reviewed, cases.length);
   $("result").hidden = !answer;
+  const experiment = $("experiment");
+  experiment.hidden = !answer || (item.id !== "filter" && item.id !== "fees");
+  if (experiment.hidden) experiment.replaceChildren();
   const replay = $("candle-replay");
   replay.hidden = !answer || item.id !== "candle";
   if (replay.hidden) replay.replaceChildren();
@@ -107,8 +121,18 @@ function renderResult() {
   $("result-title").textContent = ui.rationale + " · " + choiceText(item.correct);
   $("reason").textContent = item.reason[lang];
   if (!replay.hidden) window.renderCandleReplay(replay, item.data, lang);
+  if (!experiment.hidden) {
+    current.experimentArg ??= item.id === "filter" ? item.data.trades.map(t => t.kept ? "1" : "0").join("") : String(item.data.sellFeeCents);
+    window.renderExperiment(experiment, item, lang, current.experimentArg, argument => {
+      current.experimentArg = argument;
+      renderCommand();
+    });
+  }
   $("python-title").textContent = ui.codeTitle;
   $("check-label").textContent = ui.codeLabel;
+  $("run-instructions").textContent = ui.runIn;
+  $("copy-command").textContent = ui.copyCommand;
+  $("command-fallback").setAttribute("aria-label", ui.manual);
   renderProgram();
   const index = cases.indexOf(item);
   const later = [...cases.slice(index + 1), ...cases.slice(0, index)];
@@ -254,6 +278,7 @@ $("skip").onclick = event => {
   $("question").scrollIntoView();
 };
 $("share").onclick = () => copy(urlFor(item.id, lang, true), ui.shared);
+$("copy-command").onclick = () => copy($("check-command").textContent, ui.commandCopied, $("code-status"), $("command-fallback"));
 $("view-review").onclick = openSessionReview;
 $("copy-session").onclick = () => copy(sessionTsv, ui.copiedSession, $("session-copy-status"), $("session-copy-fallback"));
 $("close-review").onclick = () => $("session-review").close();
