@@ -13,11 +13,11 @@ runInNewContext(readFileSync(join(docs, "cases.js"), "utf8"), context);
 const cases = context.window.PILOT_CASES;
 const verdicts = { filter: "revise", candle: "evidence", fees: "approve", lookahead: "revise" };
 
-function expectedFromEvidence(item) {
+function expectedFromEvidence(item, argument) {
   switch (item.id) {
     case "filter": {
       const original = item.data.trades;
-      const filtered = original.filter(trade => trade.kept);
+      const filtered = original.filter((trade, i) => argument === undefined ? trade.kept : argument[i] === "1");
       const net = trades => trades.reduce((sum, trade) => sum + trade.net, 0);
       const stats = trades => {
         const wins = trades.filter(trade => trade.net > 0).length;
@@ -35,7 +35,7 @@ function expectedFromEvidence(item) {
     case "fees": {
       const { quantity, buyCents, sellCents, buyFeeCents, sellFeeCents } = item.data;
       const gross = quantity * (sellCents - buyCents);
-      const fees = buyFeeCents + sellFeeCents;
+      const fees = buyFeeCents + (argument === undefined ? sellFeeCents : Number(argument));
       return `Gross: ${gross} cents\nFees: ${fees} cents\nNet: ${gross - fees} cents`;
     }
     case "lookahead": {
@@ -78,19 +78,19 @@ assert.deepEqual(Array.from(cases, item => item.id).sort(), Object.keys(verdicts
 const scratch = mkdtempSync(join(tmpdir(), "backtest-checks-"));
 try {
   const runners = {
-    python: dir => run("python3", [join(dir, "check.py")]),
-    rust: dir => {
+    python: (dir, args) => run("python3", [join(dir, "check.py"), ...args]),
+    rust: (dir, args) => {
       const exe = join(scratch, process.platform === "win32" ? "check.exe" : "check");
       run("rustc", ["--edition=2021", "-D", "warnings", join(dir, "check.rs"), "-o", exe]);
-      return run(exe, []);
+      return run(exe, args);
     },
-    go: dir => run("go", ["run", join(dir, "check.go")], {
+    go: (dir, args) => run("go", ["run", join(dir, "check.go"), ...args], {
       ...process.env, GOTELEMETRY: "off", GOTOOLCHAIN: "local", GOPROXY: "off",
       GOCACHE: process.env.GOCACHE || join(scratch, "go-cache")
     }),
-    java: dir => run("java", [join(dir, "Check.java")]),
-    dart: dir => run("dart", ["--suppress-analytics", "run", join(dir, "check.dart")]),
-    zig: dir => run("zig", ["run", join(dir, "check.zig")], {
+    java: (dir, args) => run("java", [join(dir, "Check.java"), ...args]),
+    dart: (dir, args) => run("dart", ["--suppress-analytics", "run", join(dir, "check.dart"), ...args]),
+    zig: (dir, args) => run("zig", ["run", join(dir, "check.zig"), ...(args.length ? ["--", ...args] : [])], {
       ...process.env, ZIG_GLOBAL_CACHE_DIR: join(scratch, "zig-global-cache"),
       ZIG_LOCAL_CACHE_DIR: join(scratch, "zig-local-cache")
     })
@@ -105,10 +105,18 @@ try {
       for (const row of item.rows[lang]) assert.equal(row.length, item.columns[lang].length);
       assert.equal(item.summary[lang].length, 2);
     }
-    const expected = expectedFromEvidence(item);
+    const scenarios = { filter: ["00000", "11111", "11110"], fees: ["0", "675", "1000"] };
+    const invalid = { filter: ["1111X"], fees: ["0675", "1001"] };
     for (const language of selected === "all" ? languages : [selected]) {
-      const actual = runners[language](join(docs, "checks", item.id));
-      assert.equal(actual, expected, item.id + " / " + language);
+      const execute = args => runners[language](join(docs, "checks", item.id), args);
+      const baseline = execute([]);
+      assert.equal(baseline, expectedFromEvidence(item), item.id + " / " + language);
+      for (const argument of scenarios[item.id] ?? []) {
+        assert.equal(execute([argument]), expectedFromEvidence(item, argument), language + " " + argument);
+      }
+      for (const argument of invalid[item.id] ?? []) {
+        assert.throws(() => execute([argument]), { name: "AssertionError" }, "Must reject " + argument);
+      }
       console.log(`PASS ${item.id} / ${language}`);
     }
   }
