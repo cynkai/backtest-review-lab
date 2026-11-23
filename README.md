@@ -36,9 +36,9 @@ To run the entire set, clone the repository and run `node tests/check-cases.mjs 
 
 Send a fresh case link or show the question card before discussing the verdict. To try it offline, open `docs/index.html` in a browser.
 
-The case index shows how many cases you’ve answered. After answering every case, open the final review to compare your first verdict for each case with the reviewer’s. You can copy the full session as a spreadsheet-ready TSV with one row per case and the columns `case_id`, `first_verdict`, `reviewer_verdict`, `active_seconds`, and `evidence_opened`.
+The case index shows how many cases you’ve answered. After answering every case, open the final review to compare your first verdict for each case with the reviewer’s. You can copy or download the full session as a spreadsheet-ready TSV with one row per case and the columns `case_id`, `first_verdict`, `reviewer_verdict`, `active_seconds`, and `evidence_opened`.
 
-The pilot timer counts time while the case is selected and the page is visible. The site keeps results in memory for the current page session as you switch cases or languages. Copy a result when you’re ready to share it with a facilitator. The site sends no verdicts or timing data to the project.
+The pilot timer counts time while the case is selected and the page is visible. The site keeps results in memory for the current page session as you switch cases or languages. Copy or download your results when you’re ready to share them with a facilitator. The site sends no verdicts or timing data to the project.
 
 If a case sparked a disagreement, or a real review gave you an idea for another one, [leave a note](https://github.com/cynkai/backtest-review-lab/issues/new?template=feedback.yml). GitHub issues are public.
 
@@ -46,7 +46,7 @@ If a case sparked a disagreement, or a real review gave you an idea for another 
 
 [거래 원장](https://cynkai.github.io/backtest-review-lab/?case=filter&lang=ko), [5분봉과 두 주문](https://cynkai.github.io/backtest-review-lab/?case=candle&lang=ko), [체결 명세서](https://cynkai.github.io/backtest-review-lab/?case=fees&lang=ko), [종가로 낸 매수 신호](https://cynkai.github.io/backtest-review-lab/?case=lookahead&lang=ko) 중 하나를 고르세요. 판정 뒤에 Go·Rust·Dart·Zig·Python·Java 풀이를 골라 내려받을 수 있습니다. 5분봉 사례에서는 두 가격 경로를 바꿔 보며 어느 주문이 먼저 체결되는지 확인할 수 있습니다. 스터디에서는 화면 아래의 **문제 카드 저장 (PNG)** 으로 정답이 가려진 카드를 공유하세요.
 
-문제 목록에서 답한 문제 수를 확인할 수 있습니다. 모든 문제에 답하면 최종 검토 화면에서 문제별 첫 판정과 검토자 판정을 비교할 수 있습니다. 원할 때 전체 판정, 문제별 활동 시간, 판정 전 근거 열람 여부를 스프레드시트에 붙여넣을 수 있는 TSV로 복사하세요. 결과는 현재 페이지를 열어 둔 동안만 메모리에 남습니다.
+문제 목록에서 답한 문제 수를 확인할 수 있습니다. 모든 문제에 답하면 최종 검토 화면에서 문제별 첫 판정과 검토자 판정을 비교할 수 있습니다. 전체 판정, 문제별 활동 시간, 판정 전 근거 열람 여부를 스프레드시트용 TSV로 복사하거나 내려받을 수 있습니다. 결과는 현재 페이지를 열어 둔 동안만 메모리에 남습니다.
 
 <details>
 <summary>Maintaining the static site</summary>
