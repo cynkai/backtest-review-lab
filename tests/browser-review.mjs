@@ -36,6 +36,10 @@ async function verifyHostedReview(page, origin) {
   assert.equal(await page.locator("h1").textContent(), "The higher win rate");
   assert.equal(await page.locator("#case-links a").count(), 4);
   assert.equal(await page.locator("#result").isHidden(), true);
+  const progress = page.locator("#progress-count");
+  const reviewButton = page.locator("#view-review");
+  assert.equal(await progress.textContent(), "0 of 4 reviewed");
+  assert.equal(await reviewButton.isHidden(), true);
   await page.getByRole("button", { name: "Copy case link" }).click();
   const copyField = page.locator("#copy-fallback");
   await copyField.waitFor({ state: "visible" });
@@ -49,6 +53,8 @@ async function verifyHostedReview(page, origin) {
   await page.goBack();
   assert.equal(await page.locator("#evidence-table").isVisible(), true);
   await page.getByRole("button", { name: "Approve", exact: true }).click();
+  assert.equal(await progress.textContent(), "1 of 4 reviewed");
+  assert.equal(await reviewButton.isHidden(), true);
   assert.equal(await page.locator("#result-tag").textContent(), "The reviewer made a different call");
   assert.match(await page.locator("#result-title").textContent(), /Request changes/);
   assert.equal(await page.locator("#choices button[aria-pressed=true]").textContent(), "Approve");
@@ -74,6 +80,7 @@ async function verifyHostedReview(page, origin) {
   const replay = page.locator("#candle-replay");
   assert.equal(await replay.isHidden(), true);
   await page.getByRole("button", { name: "Request more evidence", exact: true }).click();
+  assert.equal(await progress.textContent(), "2 of 4 reviewed");
   assert.equal(await replay.isVisible(), true);
   assert.match(await replay.getByRole("status").textContent(), /\$105 target first/);
   await replay.getByRole("radio", { name: "Low first" }).check();
@@ -85,6 +92,8 @@ async function verifyHostedReview(page, origin) {
   assert.equal(new URL(page.url()).searchParams.get("case"), "fees");
   assert.equal(await replay.isHidden(), true);
   await page.getByRole("button", { name: "Approve", exact: true }).click();
+  assert.equal(await progress.textContent(), "3 of 4 reviewed");
+  assert.equal(await reviewButton.isHidden(), true);
   assert.match(await page.locator("#result-title").textContent(), /Approve/);
   await page.locator("#next").click();
   assert.equal(new URL(page.url()).searchParams.get("case"), "lookahead");
@@ -101,8 +110,12 @@ async function verifyHostedReview(page, origin) {
   await page.getByRole("button", { name: "수정 요청", exact: true }).click();
   assert.match(await page.locator("#result-title").textContent(), /수정 요청/);
   await page.locator("#python-title").click();
-  for (const [language, file] of Object.entries({ python: "check.py", rust: "check.rs", go: "check.go", java: "Check.java" })) {
-    await page.locator("#check-language").selectOption(language);
+  const picker = page.locator("#check-language");
+  assert.deepEqual(await picker.locator("option").allTextContents(), ["Go", "Rust", "Dart", "Zig 0.15.2", "Python", "Java"]);
+  assert.equal(await picker.inputValue(), "go");
+  const sources = { go: "check.go", rust: "check.rs", dart: "check.dart", zig: "check.zig", python: "check.py", java: "Check.java" };
+  for (const [language, file] of Object.entries(sources)) {
+    await picker.selectOption(language);
     const source = page.locator("#check-source");
     assert.equal(await source.getAttribute("download"), file);
     const response = await page.request.get(new URL(await source.getAttribute("href"), page.url()).href);
@@ -111,6 +124,50 @@ async function verifyHostedReview(page, origin) {
   }
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true,
     "the expanded evidence and code must fit the narrow viewport");
+
+  assert.equal(await progress.textContent(), "4개 중 4개 검토 완료");
+  assert.equal(await page.locator("#next").isHidden(), true);
+  const review = page.getByRole("dialog");
+  await reviewButton.click();
+  assert.equal(await review.isVisible(), true);
+  assert.equal(await review.evaluate(dialog => dialog.scrollWidth <= dialog.clientWidth), true,
+    "the completed review must fit the narrow viewport");
+  assert.equal(await review.locator("#session-score").textContent(), "4개 중 3개 판정 일치");
+  const verdicts = await review.locator("#session-rows tr").evaluateAll(rows =>
+    rows.map(row => Array.from(row.cells).slice(1, 3).map(cell => cell.textContent)));
+  assert.deepEqual(verdicts, [
+    ["승인", "수정 요청"],
+    ["추가 자료 요청", "추가 자료 요청"],
+    ["승인", "승인"],
+    ["수정 요청", "수정 요청"]
+  ]);
+
+  await review.locator("#copy-session").click();
+  const exportField = review.locator("#session-copy-fallback");
+  await exportField.waitFor({ state: "visible" });
+  const [header, ...rows] = (await exportField.inputValue()).trimEnd().split("\n");
+  assert.equal(header, "case_id\tfirst_verdict\treviewer_verdict\tactive_seconds\tevidence_opened");
+  const records = rows.map(row => row.split("\t"));
+  assert.deepEqual(records.map(([id, first, reviewer, seconds, opened]) => {
+    assert.match(seconds, /^\d+$/);
+    return [id, first, reviewer, opened];
+  }), [
+    ["filter", "approve", "revise", "true"],
+    ["candle", "evidence", "evidence", "false"],
+    ["fees", "approve", "approve", "false"],
+    ["lookahead", "revise", "revise", "true"]
+  ]);
+  assert.equal(records[0][3], activeSeconds[1]);
+  await review.locator("#close-review").click();
+  assert.equal(await review.isHidden(), true);
+  assert.equal(await reviewButton.evaluate(button => button === document.activeElement), true);
+
+  await page.getByRole("link", { name: "EN", exact: true }).click();
+  assert.equal(await progress.textContent(), "4 of 4 reviewed");
+  await reviewButton.click();
+  assert.equal(await review.locator("#session-score").textContent(), "3 of 4 verdicts matched");
+  await page.keyboard.press("Escape");
+  assert.equal(await review.isHidden(), true);
 }
 
 async function verifyOfflineReview(page) {

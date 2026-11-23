@@ -14,5 +14,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Check that displayed code matches the downloadable files
         run: node scripts/bundle-checks.mjs --check
-      - name: Check all four languages against the published evidence
+      - uses: dart-lang/setup-dart@2286a0c042b44434fe26d292bbce8d34f7ec662b # v1.8.2
+        with:
+          sdk: '3.14.1'
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
+        with:
+          version: '0.15.2'
+          use-cache: false
+      - name: Check all languages against the published evidence
         run: node tests/check-cases.mjs all

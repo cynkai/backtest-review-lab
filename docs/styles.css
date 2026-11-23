@@ -63,7 +63,9 @@ h1, h2, p, blockquote, figure, pre { margin: 0; }
 .case-index, .kicker, .section-label, .exhibit-title, .result-tag {
   font: 600 .78rem/1.45 var(--mono); letter-spacing: .04em;
 }
-.case-index { display: flex; align-items: center; margin: 0; color: var(--muted); }
+.case-nav-label { display: grid; align-content: center; gap: .15rem; padding-block: .35rem; }
+.case-index { color: var(--muted); }
+#progress-count { color: var(--muted); font-size: .78rem; }
 #case-links { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); }
 .case-tab {
   display: flex; align-items: baseline; gap: .55rem; min-width: 0; min-height: 2.8rem; padding: .82rem .65rem;
@@ -163,6 +165,18 @@ code { font: .86rem/1.55 var(--mono); }
 .result:not([hidden]) + .share-area { margin-top: 1rem; }
 .fine { font-size: .85rem; }
 .shared-url { flex-basis: 100%; min-height: 3.3rem; border: 1px solid var(--rule); padding: .4rem; color: var(--ink); background: var(--paper); font: .9rem/1.4 var(--mono); }
+.session-review {
+  width: min(37rem, calc(100% - 2rem)); max-height: calc(100% - 2rem);
+  padding: clamp(.85rem, 3vw, 1.65rem); border: 1px solid var(--strong-rule);
+  background: var(--paper); color: var(--ink);
+}
+.session-review::backdrop { background: rgb(0 0 0 / .5); }
+.session-review h2 { font: 620 1.65rem/1.25 var(--serif); }
+#session-score { margin: .35rem 0 .8rem; color: var(--muted); }
+.session-review td { font: inherit; }
+.session-review th, .session-review td { padding-inline: .35rem; }
+#session-copy-status:not(:empty) { margin-top: .65rem; }
+#session-copy-fallback { width: 100%; margin-top: .35rem; }
 .footer { border-top: 3px double var(--ink); min-height: 4.5rem; padding-block: .8rem; color: var(--muted); font-size: .88rem; }
 .footer > span { font: 620 1.1rem/1.2 var(--serif); letter-spacing: -.035em; }
 .footer nav { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem 1rem; }
@@ -175,6 +189,7 @@ noscript { display: block; margin: 1rem var(--gutter); }
 }
 @media (max-width: 48rem) {
   .case-nav { grid-template-columns: 1fr; padding-top: .65rem; }
+  .case-nav-label { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .2rem 1rem; padding: 0; }
   .case-index { font-size: .75rem; }
   .case-tab { padding: .52rem .55rem .65rem 0; gap: .35rem; }
   .spread { gap: 1.2rem; }

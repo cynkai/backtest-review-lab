@@ -18,7 +18,7 @@ HEADLINES = {
     "lookahead": {"en": ("A signal at the close.", "Could the order fill?"), "ko": ("종가로 낸 매수 신호,", "주문은 체결됐을까?")},
 }
 
-def draw_card(case, index, language, fonts, case_count):
+def draw_card(case, index, language, fonts, case_count, language_count):
     image = Image.new("RGB", (1200, 630), PAPER)
     draw = ImageDraw.Draw(image)
     korean = language == "ko"
@@ -49,7 +49,7 @@ def draw_card(case, index, language, fonts, case_count):
         section = case["category"][language]
     else:
         lines = ("Would you sign off", "on this backtest?")
-        facts = [("Review files", f"{case_count} cases"), ("Reproduce in", "Python / Rust / Go / Java")]
+        facts = [("Review files", f"{case_count} cases"), ("Reproduce in", f"{language_count} languages")]
         url, section = BASE, "A collection of quant review puzzles"
     text(58, 148, section, label, 25, ACCENT)
     for y, line in zip((200, 298), lines):
@@ -83,14 +83,23 @@ def main():
     parser.add_argument("--korean", required=True, help="Font file with Hangul coverage")
     option = parser.parse_args()
     fonts = (option.serif, option.sans, option.korean)
-    read_cases = "global.window={};require('./docs/cases.js');console.log(JSON.stringify(window.PILOT_CASES))"
-    cases = json.loads(subprocess.check_output(["node", "-e", read_cases], cwd=ROOT))
+    read_site_data = """
+global.window = {};
+require('./docs/cases.js');
+require('./docs/programs.js');
+console.log(JSON.stringify({
+  cases: window.PILOT_CASES,
+  languageCount: Object.keys(globalThis.CHECK_PROGRAMS).length
+}));
+"""
+    site = json.loads(subprocess.check_output(["node", "-e", read_site_data], cwd=ROOT))
+    cases, language_count = site["cases"], site["languageCount"]
     output = ROOT / "docs" / "cards"
     output.mkdir(exist_ok=True)
     for i, case in enumerate(cases, start=1):
         for lang in ("en", "ko"):
-            draw_card(case, i, lang, fonts, len(cases)).save(output / f"{case['id']}-{lang}.png", optimize=True)
-    draw_card(None, 0, "en", fonts, len(cases)).save(output / "cover.png", optimize=True)
+            draw_card(case, i, lang, fonts, len(cases), language_count).save(output / f"{case['id']}-{lang}.png", optimize=True)
+    draw_card(None, 0, "en", fonts, len(cases), language_count).save(output / "cover.png", optimize=True)
 
 if __name__ == "__main__":
     main()

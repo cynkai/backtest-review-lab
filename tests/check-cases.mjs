@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
+import "../docs/programs.js";
 
 const context = { window: {} };
 const docs = fileURLToPath(new URL("../docs/", import.meta.url));
@@ -69,9 +70,9 @@ function run(command, args, env = process.env) {
 }
 
 const selected = process.argv[2] ?? "python";
-const languages = ["python", "rust", "go", "java"];
+const languages = Object.keys(globalThis.CHECK_PROGRAMS);
 if (process.argv.length > 3 || (selected !== "all" && !languages.includes(selected))) {
-  throw new Error("Usage: node tests/check-cases.mjs [python|rust|go|java|all]");
+  throw new Error("Usage: node tests/check-cases.mjs [" + [...languages, "all"].join("|") + "]");
 }
 assert.deepEqual(Array.from(cases, item => item.id).sort(), Object.keys(verdicts).sort());
 const scratch = mkdtempSync(join(tmpdir(), "backtest-checks-"));
@@ -87,7 +88,12 @@ try {
       ...process.env, GOTELEMETRY: "off", GOTOOLCHAIN: "local", GOPROXY: "off",
       GOCACHE: process.env.GOCACHE || join(scratch, "go-cache")
     }),
-    java: dir => run("java", [join(dir, "Check.java")])
+    java: dir => run("java", [join(dir, "Check.java")]),
+    dart: dir => run("dart", ["--suppress-analytics", "run", join(dir, "check.dart")]),
+    zig: dir => run("zig", ["run", join(dir, "check.zig")], {
+      ...process.env, ZIG_GLOBAL_CACHE_DIR: join(scratch, "zig-global-cache"),
+      ZIG_LOCAL_CACHE_DIR: join(scratch, "zig-local-cache")
+    })
   };
   for (const item of cases) {
     assert.equal(item.correct, verdicts[item.id]);
