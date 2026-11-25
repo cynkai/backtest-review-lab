@@ -14,6 +14,7 @@ body:
         - Tried a case · 문제를 풀었음
         - Sent a case to someone · 동료에게 실제로 전달함
         - Used a case in a study group · 스터디에서 사용함
+        - Compared my own ledger · 내 거래 원장을 검토했음
         - Have an idea or correction · 사례 제안 또는 정정
     validations:
       required: true

@@ -8,6 +8,7 @@ const labels = {
     approve: "Approve", revise: "Request changes", evidenceChoice: "Request more evidence",
     matched: "You and the reviewer agree", different: "The reviewer made a different call",
     rationale: "Reviewer’s verdict", codeTitle: "Reproduce this review", codeLabel: "Language", download: "Download",
+    ownLedger: "Review your own trade ledger", newTab: "opens in a new tab",
     card: "Save question card (PNG)", share: "Copy case link",
     shared: "Unsolved link copied.", fallback: "Select and copy the text below.", report: "Copy my pilot result",
     reported: "Result copied. You can send it to the person who invited you.", feedback: "Give feedback on GitHub",
@@ -25,6 +26,7 @@ const labels = {
     approve: "승인", revise: "수정 요청", evidenceChoice: "추가 자료 요청",
     matched: "검토자와 같은 판정을 내렸습니다", different: "검토자는 다르게 판단했습니다",
     rationale: "검토 결과", codeTitle: "내 컴퓨터에서 검산하기", codeLabel: "코드 언어", download: "소스 받기",
+    ownLedger: "내 거래 원장 검토하기", newTab: "새 탭에서 열림",
     card: "문제 카드 저장 (PNG)", share: "문제 링크 복사",
     shared: "정답 없는 링크를 복사했습니다.", fallback: "아래 텍스트를 선택해 복사해 주세요.", report: "내 파일럿 결과 복사",
     reported: "결과를 복사했습니다. 초대한 사람에게 직접 보낼 수 있습니다.", feedback: "GitHub에 의견 남기기",
@@ -113,6 +115,11 @@ function renderResult() {
   const experiment = $("experiment");
   experiment.hidden = !answer || (item.id !== "filter" && item.id !== "fees");
   if (experiment.hidden) experiment.replaceChildren();
+  $("ledger-followup").hidden = experiment.hidden;
+  const ledger = $("ledger-review");
+  ledger.href = "ledger.html?lang=" + lang;
+  ledger.textContent = ui.ownLedger;
+  ledger.setAttribute("aria-label", ui.ownLedger + " (" + ui.newTab + ")");
   const replay = $("candle-replay");
   replay.hidden = !answer || item.id !== "candle";
   if (replay.hidden) replay.replaceChildren();
