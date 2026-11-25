@@ -183,7 +183,9 @@ async function verifyHostedReview(page, origin) {
 async function verifyExperiments(page, origin) {
   await page.goto(origin + "/?case=filter&lang=en");
   assert.equal(await page.locator("#experiment").isHidden(), true);
+  assert.equal(await page.locator("#ledger-review").isHidden(), true);
   await page.getByRole("button", { name: "Request changes", exact: true }).click();
+  assert.equal(await page.locator("#ledger-review").getAttribute("href"), "ledger.html?lang=en");
   const sheet = page.locator("#experiment");
   const value = key => sheet.locator('[data-value="' + key + '"]').textContent();
   assert.equal(await value("net"), "+$5");
@@ -205,6 +207,7 @@ async function verifyExperiments(page, origin) {
   assert.equal(await page.locator("#command-fallback").inputValue(), commands.java);
   await page.locator("#korean").click();
   assert.equal(await value("net"), "+$25");
+  assert.equal(await page.locator("#ledger-review").getAttribute("href"), "ledger.html?lang=ko");
   assert.equal(await page.locator("#choices [aria-pressed=true]").textContent(), "수정 요청");
   for (const input of await sheet.getByRole("checkbox").all()) await input.uncheck();
   assert.equal(await value("wins"), "해당 없음");
@@ -237,6 +240,84 @@ async function verifyExperiments(page, origin) {
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
 }
 
+async function verifyLedgerAudit(page, url, fileMode = false) {
+  await page.goto(url);
+  assert.equal(await page.locator("h1").textContent(), "Audit your trade ledger");
+  const results = page.locator("#ledger-results");
+  const text = page.locator("#ledger-text");
+  const error = page.locator("#ledger-error");
+  const metric = (key, column) => {
+    const row = results.locator('[data-metric="' + key + '"]');
+    return column ? row.locator('[data-column="' + column + '"]') : row;
+  };
+  assert.equal(await results.isHidden(), true);
+  await page.locator("#load-sample").click();
+  assert.equal(await results.isVisible(), true);
+  assert.equal(await metric("net", "all").textContent(), "22.00");
+  assert.equal(await metric("net", "kept").textContent(), "5.00");
+  assert.equal(await metric("win-rate", "all").textContent(), "60.0%");
+  assert.equal(await metric("drawdown", "all").textContent(), "6.00");
+  assert.match(await metric("missed-gains").textContent(), /20\.00/);
+  assert.match(await metric("avoided-losses").textContent(), /3\.00/);
+  if (fileMode) {
+    await page.locator("#ledger-ko").click();
+    assert.equal(await page.locator("h1").textContent(), "내 거래 원장 검토");
+    assert.equal(await metric("net", "kept").textContent(), "5.00");
+    return;
+  }
+  const sample = await page.request.get(new URL("sample-ledger.csv", url).href);
+  assert.equal(sample.ok(), true);
+  assert.equal((await text.inputValue()).trim(), (await sample.text()).trim());
+  await page.locator("#ledger-ko").click();
+  assert.equal(await page.locator("h1").textContent(), "내 거래 원장 검토");
+  assert.equal(await metric("net", "kept").textContent(), "5.00");
+  await page.goBack();
+  assert.equal(await page.locator("h1").textContent(), "Audit your trade ledger");
+  assert.equal(await metric("net", "kept").textContent(), "5.00");
+
+  const requests = [];
+  const remember = request => requests.push(request.url());
+  page.on("request", remember);
+  await page.context().setOffline(true);
+  try {
+    await text.fill("gross,fees,kept\n1.00,broken,1");
+    assert.equal(await results.isHidden(), true);
+    await page.locator("#audit-ledger").click();
+    assert.equal(await error.isVisible(), true);
+    assert.match(await error.textContent(), /2/);
+    assert.equal(await results.isHidden(), true);
+    await page.locator("#ledger-file").setInputFiles({
+      name: "local-trades.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from("gross,fees,kept\n-2.00,0.25,0\n3.00,0.25,0\n")
+    });
+    await page.waitForFunction(() => document.getElementById("ledger-text").value.includes("-2.00"));
+    await page.locator("#audit-ledger").click();
+    assert.equal(await metric("net", "all").textContent(), "0.50");
+    assert.equal(await metric("net", "kept").textContent(), "0.00");
+    assert.equal(await metric("drawdown", "all").textContent(), "2.25");
+    assert.equal(await metric("win-rate", "kept").textContent(), "—");
+    await page.locator("#ledger-file").setInputFiles({
+      name: "invalid-utf8.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from([0xC3, 0x28])
+    });
+    await error.waitFor({ state: "visible" });
+    assert.match(await error.textContent(), /UTF-8/);
+    assert.equal(await text.inputValue(), "");
+    assert.equal(await results.isHidden(), true);
+    await page.locator("#ledger-clear").click();
+    assert.equal(await text.inputValue(), "");
+    assert.equal(await results.isHidden(), true);
+    assert.equal(await error.isHidden(), true);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    assert.deepEqual(requests, []);
+  } finally {
+    await page.context().setOffline(false);
+    page.off("request", remember);
+  }
+}
+
 async function verifyOfflineReview(page) {
   try {
     await page.goto(new URL("../docs/index.html?case=filter&lang=en", import.meta.url).href);
@@ -252,6 +333,7 @@ async function verifyOfflineReview(page) {
   assert.equal(await page.locator("html").getAttribute("lang"), "ko");
   await page.locator("#case-links a").first().click();
   assert.equal(await page.locator("#choices button[aria-pressed=true]").textContent(), "수정 요청");
+  await verifyLedgerAudit(page, new URL("../docs/ledger.html?lang=en", import.meta.url).href, true);
   console.log("Offline browser review passed.");
 }
 
@@ -272,6 +354,8 @@ try {
   console.log("Hosted browser review passed.");
   await verifyExperiments(page, "http://127.0.0.1:" + server.address().port);
   console.log("Filter and commission experiments passed.");
+  await verifyLedgerAudit(page, "http://127.0.0.1:" + server.address().port + "/ledger.html?lang=en");
+  console.log("CSV trade review passed.");
   await verifyOfflineReview(page);
   assert.deepEqual(pageErrors, []);
 } finally {

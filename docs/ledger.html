@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#faf9f4" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1d1d1a" media="(prefers-color-scheme: dark)">
+  <meta name="description" content="Compare the trades a backtest filter kept with the full ledger. Run the audit in your browser from a local CSV.">
+  <title>Audit your trade ledger · Backtest Review Lab</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="ledger.css">
+  <script defer src="ledger-core.js"></script>
+  <script defer src="ledger-app.js"></script>
+</head>
+<body class="ledger-page">
+  <a class="skip-link" href="#ledger-main" data-label="skip">Skip to the audit</a>
+  <header class="masthead">
+    <div class="mast-inner">
+      <a class="brand" id="ledger-home" href="index.html?case=filter&amp;lang=en">
+        <span>Backtest Review <i>Lab</i></span>
+      </a>
+      <nav class="language" aria-label="Language" id="ledger-languages">
+        <a href="?lang=en" id="ledger-en" data-language="en" aria-current="true" lang="en">EN</a>
+        <span aria-hidden="true">/</span>
+        <a href="?lang=ko" id="ledger-ko" data-language="ko" lang="ko">한국어</a>
+      </nav>
+    </div>
+  </header>
+  <main class="shell" id="ledger-main" tabindex="-1">
+    <header class="case-head">
+      <a class="ledger-back" id="ledger-back" href="index.html?case=filter&amp;lang=en" data-label="back">← Review a case</a>
+      <h1 data-label="title">Audit your trade ledger</h1>
+      <p class="howto" data-label="intro">Compare the trades your filter kept with the full ledger. The file and results stay in this browser tab.</p>
+    </header>
+    <noscript>Enable JavaScript to compare trades. 거래를 비교하려면 자바스크립트를 켜세요.</noscript>
+    <div class="ledger-workspace">
+      <form id="ledger-form" aria-labelledby="ledger-input-heading">
+        <h2 id="ledger-input-heading" data-label="input">Trade data</h2>
+        <div class="ledger-file-field">
+          <label for="ledger-file" data-label="file">Choose a local CSV</label>
+          <input id="ledger-file" type="file" accept=".csv,text/csv,.txt,text/plain" aria-describedby="ledger-file-hint" autocomplete="off">
+          <p class="fine" id="ledger-file-hint" data-label="fileHint">UTF-8, up to 1 MB and 10,000 trades.</p>
+        </div>
+        <label for="ledger-text" data-label="paste">Or paste CSV</label>
+        <textarea id="ledger-text" rows="8" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="gross,fees,kept" aria-describedby="ledger-error" wrap="off"></textarea>
+        <p id="ledger-error" class="ledger-error" role="alert"></p>
+        <div class="ledger-form-actions">
+          <button class="action" id="audit-ledger" type="button" data-label="compare">Compare trades</button>
+          <button class="action secondary" id="load-sample" type="button" data-label="sample">Load sample</button>
+          <button class="action secondary" id="ledger-clear" type="button" data-label="clear">Clear</button>
+        </div>
+        <p id="ledger-status" class="fine" role="status"></p>
+      </form>
+      <div class="ledger-reading">
+        <section id="ledger-results" class="ledger-results" aria-labelledby="ledger-result-heading" hidden>
+          <h2 id="ledger-result-heading" tabindex="-1" data-label="comparison">Ledger comparison</h2>
+          <p class="fine" id="ledger-result-note" data-label="metricIntro">Win rate uses profit after fees. Amounts use the currency of your CSV.</p>
+          <table aria-labelledby="ledger-result-heading" aria-describedby="ledger-result-note ledger-drawdown-note">
+            <thead>
+              <tr><th scope="col" data-label="metric">Measure</th><th scope="col" data-label="all">All trades</th><th scope="col" data-label="kept">Kept trades</th></tr>
+            </thead>
+            <tbody>
+              <tr data-metric="count"><th scope="row" data-label="count">Trades</th><td data-column="all"></td><td data-column="kept"></td></tr>
+              <tr data-metric="win-rate"><th scope="row" data-label="winRate">Win rate</th><td data-column="all"></td><td data-column="kept"></td></tr>
+              <tr data-metric="gross"><th scope="row" data-label="gross">Gross P&amp;L</th><td data-column="all"></td><td data-column="kept"></td></tr>
+              <tr data-metric="fees"><th scope="row" data-label="fees">Fees</th><td data-column="all"></td><td data-column="kept"></td></tr>
+              <tr data-metric="net"><th scope="row" data-label="net">Net P&amp;L</th><td data-column="all"></td><td data-column="kept"></td></tr>
+              <tr data-metric="drawdown"><th scope="row" data-label="drawdown">Max drawdown</th><td data-column="all"></td><td data-column="kept"></td></tr>
+            </tbody>
+          </table>
+          <dl class="ledger-exclusions">
+            <div><dt data-label="missedGains">Gains given up</dt><dd data-metric="missed-gains"></dd></div>
+            <div><dt data-label="avoidedLosses">Losses avoided</dt><dd data-metric="avoided-losses"></dd></div>
+          </dl>
+          <p class="fine ledger-drawdown-note" id="ledger-drawdown-note" data-label="drawdownNote">Drawdown is the largest peak-to-trough drop in cumulative net P&amp;L, starting at zero and counting trades in CSV order.</p>
+        </section>
+        <section class="ledger-guide" id="ledger-guide" aria-labelledby="ledger-guide-heading">
+          <h2 id="ledger-guide-heading" data-label="format">CSV format</h2>
+          <p class="fine" data-label="guide">List closed trades in close order. Use one account currency and a decimal point.</p>
+          <dl class="ledger-fields">
+            <div><dt><code>gross</code></dt><dd data-label="fieldGross">Profit or loss before fees</dd></div>
+            <div><dt><code>fees</code></dt><dd data-label="fieldFees">Total fees for that trade, zero or more</dd></div>
+            <div><dt><code>kept</code></dt><dd data-label="fieldKept">Enter 1 to keep a trade or 0 to skip it</dd></div>
+          </dl>
+          <a class="ledger-sample" href="sample-ledger.csv" download data-label="download">Download sample CSV</a>
+        </section>
+      </div>
+    </div>
+  </main>
+  <footer class="footer">
+    <span>Backtest Review Lab</span>
+    <nav>
+      <a href="https://github.com/cynkai/backtest-review-lab/issues/new?template=feedback.yml" data-label="feedback">Send feedback</a>
+      <a href="https://github.com/cynkai/backtest-review-lab">GitHub</a>
+    </nav>
+  </footer>
+</body>
+</html>
